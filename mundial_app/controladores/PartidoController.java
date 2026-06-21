@@ -95,4 +95,11 @@ public class PartidoController {
     public String getUltimoError() {
         return ultimoError;
     }
+
+    /**
+     * Actualiza los goles de un partido finalizado en la base de datos.
+     */
+    public boolean actualizarGolesPartido(int partidoId, int golesLocal, int golesVisita) {
+        return partidoDAO.actualizarGolesPartido(partidoId, golesLocal, golesVisita);
+    }
 }

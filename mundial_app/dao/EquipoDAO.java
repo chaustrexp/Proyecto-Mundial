@@ -42,4 +42,18 @@ public class EquipoDAO {
         }
         return 0;
     }
+
+    public boolean actualizarEquipo(Equipo eq) {
+        String sql = "UPDATE equipos SET nombre = ?, confederacion = ?, grupo = ? WHERE id = ?";
+        try (Connection conn = ConexionBD.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, eq.getNombre());
+            ps.setString(2, eq.getFederacion());
+            ps.setString(3, eq.getGrupo());
+            ps.setInt(4, eq.getId());
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

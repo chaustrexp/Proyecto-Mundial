@@ -7,7 +7,7 @@ import java.sql.SQLException;
 public class ConexionBD {
 
     // Cambia el nombre de la base de datos aquí si usas una distinta
-    private static final String URL = "jdbc:mysql://localhost:3307/mundial?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
+    private static final String URL = "jdbc:mysql://localhost:3306/mundial?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
 
     private static final String USER = "root";
 

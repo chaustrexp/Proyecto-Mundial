@@ -35,25 +35,25 @@ public final class ThemeManager {
 
         if (mode == Mode.DARK) {
             // Dark background for panels and tables (pure black)
-            UIManager.put("Panel.background", Color.BLACK);
-            UIManager.put("Table.background", Color.BLACK);
+            UIManager.put("Panel.background", new Color(10, 10, 20));
+            UIManager.put("Table.background", new Color(10, 10, 20));
             UIManager.put("Table.foreground", Color.WHITE);
-            UIManager.put("Table.selectionBackground", new Color(0x1A1A1A));
+            UIManager.put("Table.selectionBackground", new Color(30, 30, 55));
             UIManager.put("Table.selectionForeground", Color.WHITE);
-            UIManager.put("control", Color.BLACK); // general background
+            UIManager.put("control", new Color(10, 10, 20)); // general background
             UIManager.put("info", new Color(0x4A90E2)); // accent color
-            UIManager.put("nimbusBase", new Color(0x000000));
-            UIManager.put("nimbusBlueGrey", new Color(0x1A1A1A));
-            UIManager.put("nimbusLightBackground", Color.BLACK);
+            UIManager.put("nimbusBase", new Color(10, 10, 20));
+            UIManager.put("nimbusBlueGrey", new Color(30, 30, 55));
+            UIManager.put("nimbusLightBackground", new Color(10, 10, 20));
             UIManager.put("nimbusSelectionBackground", new Color(0x333333));
             UIManager.put("text", Color.WHITE);
             UIManager.put("Label.foreground", Color.WHITE);
             UIManager.put("Button.foreground", Color.WHITE);
-            UIManager.put("ComboBox.background", Color.BLACK);
+            UIManager.put("ComboBox.background", new Color(10, 10, 20));
             UIManager.put("ComboBox.foreground", Color.WHITE);
-            UIManager.put("List.background", Color.BLACK);
+            UIManager.put("List.background", new Color(10, 10, 20));
             UIManager.put("List.foreground", Color.WHITE);
-            UIManager.put("TextField.background", Color.BLACK);
+            UIManager.put("TextField.background", new Color(10, 10, 20));
             UIManager.put("TextField.foreground", Color.WHITE);
         } else {
             // Light mode defaults – let Nimbus handle them

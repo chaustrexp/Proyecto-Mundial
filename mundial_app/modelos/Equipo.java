@@ -44,4 +44,9 @@ public class Equipo {
     public void setFederacion(String federacion) {
         this.federacion = federacion;
     }
+
+    @Override
+    public String toString() {
+        return nombre + "  [Grupo " + grupo + "]";
+    }
 }

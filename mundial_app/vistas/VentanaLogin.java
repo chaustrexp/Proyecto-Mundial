@@ -5,266 +5,511 @@ import modelos.Usuario;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.plaf.basic.BasicComboBoxUI;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
 
 public class VentanaLogin extends JFrame {
 
-    // Paleta de colores
-    private static final Color BG_DARK      = new Color(10, 10, 20);
-    private static final Color BG_CARD      = new Color(18, 18, 35);
-    private static final Color ACCENT       = new Color(59, 130, 246);   // azul vibrante
-    private static final Color ACCENT_HOVER = new Color(96, 165, 250);
-    private static final Color GOLD         = new Color(251, 191, 36);
-    private static final Color TEXT_MAIN    = new Color(241, 245, 249);
-    private static final Color TEXT_HINT    = new Color(100, 116, 139);
-    private static final Color FIELD_BG     = new Color(30, 30, 55);
-    private static final Color FIELD_BORDER = new Color(55, 65, 100);
+    // Paleta de colores basada en el diseño
+    private static final Color BG_APP          = new Color(10, 17, 31);
+    private static final Color BG_CARD         = new Color(22, 32, 50);
+    private static final Color BORDER_CARD     = new Color(44, 58, 83);
+    private static final Color FIELD_BG        = new Color(14, 21, 35);
+    private static final Color FIELD_BORDER    = new Color(27, 38, 59);
+    private static final Color TEXT_GOLD       = new Color(226, 185, 74);
+    private static final Color TEXT_LIGHT      = new Color(194, 203, 224);
+    private static final Color TEXT_MUTED      = new Color(139, 149, 165);
+    private static final Color BUTTON_GRAD1    = new Color(222, 176, 66);
+    private static final Color BUTTON_GRAD2    = new Color(227, 190, 88);
+    private static final Color BTN_TEXT_DARK   = new Color(29, 29, 29);
 
-    private JTextField     txtUsername;
-    private JPasswordField txtPassword;
+    private JTextField        txtUsername;
+    private JPasswordField    txtPassword;
     private JComboBox<String> cbRol;
-    private JButton        btnLogin;
+    private JButton           btnLogin;
+    private boolean           isPasswordVisible = false;
 
     public VentanaLogin() {
-        setTitle("Mundial 2026 — Inicio de Sesión");
-        setSize(460, 560);
-        setResizable(false);
+        setTitle("Mundial 2026 — Sistema de Apuestas");
+        setSize(460, 780); // Ajustado para verse un poco más estilizado
+        setMinimumSize(new Dimension(420, 750));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        setUndecorated(false);
 
-        // Panel raíz con gradiente
-        JPanel root = new JPanel(new GridBagLayout()) {
+        // Panel principal con dibujo de fondo (patrón de puntos)
+        JPanel rootPanel = new JPanel(new BorderLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                GradientPaint gp = new GradientPaint(0, 0, BG_DARK, getWidth(), getHeight(), new Color(15, 15, 40));
-                g2.setPaint(gp);
+                g2.setColor(BG_APP);
                 g2.fillRect(0, 0, getWidth(), getHeight());
-                // Círculos decorativos difusos
-                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.08f));
-                g2.setColor(ACCENT);
-                g2.fillOval(-80, -80, 280, 280);
-                g2.setColor(GOLD);
-                g2.fillOval(getWidth() - 160, getHeight() - 160, 260, 260);
+
+                // Patrón de puntos sutiles
+                g2.setColor(new Color(255, 255, 255, 10));
+                for (int x = 0; x < getWidth(); x += 30) {
+                    for (int y = 0; y < getHeight(); y += 30) {
+                        g2.fillOval(x, y, 2, 2);
+                    }
+                }
                 g2.dispose();
             }
         };
-        root.setOpaque(true);
+        rootPanel.setOpaque(true);
 
-        // Tarjeta central
-        JPanel card = new JPanel(new BorderLayout(0, 0)) {
+        // --- TOP NAVBAR ---
+        JPanel navbar = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 15)) {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(BG_CARD);
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 24, 24));
-                // Borde sutil
-                g2.setColor(FIELD_BORDER);
-                g2.setStroke(new BasicStroke(1.2f));
-                g2.draw(new RoundRectangle2D.Float(0.6f, 0.6f, getWidth() - 1.2f, getHeight() - 1.2f, 24, 24));
+                g2.setColor(new Color(255, 255, 255, 20));
+                g2.drawLine(0, getHeight() - 1, getWidth(), getHeight() - 1);
                 g2.dispose();
             }
         };
-        card.setOpaque(false);
-        card.setPreferredSize(new Dimension(370, 460));
-        card.setBorder(new EmptyBorder(36, 36, 36, 36));
+        navbar.setOpaque(false);
+        navbar.setPreferredSize(new Dimension(getWidth(), 60));
+        
+        JLabel navTitle = new JLabel("🏆 Sistema de Apuestas");
+        navTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        navTitle.setForeground(TEXT_GOLD);
+        navbar.add(navTitle);
 
-        // ---- ENCABEZADO ----
-        JPanel header = new JPanel();
-        header.setOpaque(false);
-        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
+        rootPanel.add(navbar, BorderLayout.NORTH);
 
-        JLabel lblIcon = new JLabel("🏆", SwingConstants.CENTER);
-        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 48));
-        lblIcon.setAlignmentX(Component.CENTER_ALIGNMENT);
+        // --- CENTER CONTENT ---
+        JPanel centerWrapper = new JPanel();
+        centerWrapper.setLayout(new BoxLayout(centerWrapper, BoxLayout.Y_AXIS));
+        centerWrapper.setOpaque(false);
+        centerWrapper.setBorder(new EmptyBorder(25, 40, 20, 40));
+
+        // HEADER (Trophy & MUNDIAL 2026)
+        JPanel headerPanel = new JPanel();
+        headerPanel.setOpaque(false);
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+        
+        // Circular Trophy icon
+        JLabel lblTrophy = new JLabel("🏆", SwingConstants.CENTER) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(226, 185, 74, 30)); // Fondo dorado semi-transparente
+                int size = Math.min(getWidth(), getHeight()) - 4;
+                int x = (getWidth() - size) / 2;
+                int y = (getHeight() - size) / 2;
+                g2.fillOval(x, y, size, size);
+                g2.setColor(TEXT_GOLD);
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawOval(x, y, size, size);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        lblTrophy.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 28));
+        lblTrophy.setPreferredSize(new Dimension(70, 70));
+        lblTrophy.setMaximumSize(new Dimension(70, 70));
+        lblTrophy.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel lblTitle = new JLabel("MUNDIAL 2026", SwingConstants.CENTER);
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        lblTitle.setForeground(TEXT_MAIN);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        lblTitle.setForeground(TEXT_GOLD);
         lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel lblSubtitle = new JLabel("Sistema de Apuestas", SwingConstants.CENTER);
-        lblSubtitle.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        lblSubtitle.setForeground(TEXT_HINT);
+        lblSubtitle.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        lblSubtitle.setForeground(TEXT_MUTED);
         lblSubtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        header.add(lblIcon);
-        header.add(Box.createVerticalStrut(6));
-        header.add(lblTitle);
-        header.add(Box.createVerticalStrut(2));
-        header.add(lblSubtitle);
+        headerPanel.add(lblTrophy);
+        headerPanel.add(Box.createVerticalStrut(15));
+        headerPanel.add(lblTitle);
+        headerPanel.add(lblSubtitle);
+        headerPanel.add(Box.createVerticalStrut(25));
 
-        // ---- FORMULARIO ----
-        JPanel form = new JPanel();
-        form.setOpaque(false);
-        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
-
-        // Rol
-        form.add(Box.createVerticalStrut(20));
-        form.add(makeLabel("Rol"));
-        form.add(Box.createVerticalStrut(6));
-        cbRol = new JComboBox<>(new String[]{"admin", "usuario"});
-        styleCombo(cbRol);
-        form.add(cbRol);
-
-        // Usuario
-        form.add(Box.createVerticalStrut(16));
-        form.add(makeLabel("Usuario"));
-        form.add(Box.createVerticalStrut(6));
-        txtUsername = new JTextField();
-        styleField(txtUsername);
-        form.add(txtUsername);
-
-        // Contraseña
-        form.add(Box.createVerticalStrut(16));
-        form.add(makeLabel("Contraseña"));
-        form.add(Box.createVerticalStrut(6));
-        txtPassword = new JPasswordField();
-        styleField(txtPassword);
-        form.add(txtPassword);
-
-        // Botón login
-        form.add(Box.createVerticalStrut(28));
-        btnLogin = makeLoginButton();
-        form.add(btnLogin);
-
-        // ---- FOOTER ----
-        JLabel lblFooter = new JLabel("FIFA World Cup · México · USA · Canadá", SwingConstants.CENTER);
-        lblFooter.setFont(new Font("Segoe UI", Font.PLAIN, 10));
-        lblFooter.setForeground(TEXT_HINT);
-        lblFooter.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        card.add(header, BorderLayout.NORTH);
-        card.add(form, BorderLayout.CENTER);
-        card.add(lblFooter, BorderLayout.SOUTH);
+        // CARD PANEL con GridBagLayout para alinear todo perfecto
+        JPanel cardPanel = new JPanel(new GridBagLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(BG_CARD);
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 16, 16));
+                g2.setColor(BORDER_CARD);
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.draw(new RoundRectangle2D.Float(1, 1, getWidth() - 2, getHeight() - 2, 16, 16));
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        cardPanel.setOpaque(false);
+        cardPanel.setBorder(new EmptyBorder(25, 25, 25, 25));
 
         GridBagConstraints gbc = new GridBagConstraints();
-        root.add(card, gbc);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.insets = new Insets(0, 0, 5, 0); // Spacing below
 
-        // Listeners
+        // ROL
+        cardPanel.add(createLabel("ROL"), gbc);
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 0, 15, 0);
+        cbRol = new JComboBox<>(new String[]{"Admin", "Usuario"});
+        styleCombo(cbRol);
+        cardPanel.add(cbRol, gbc);
+
+        // USUARIO
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 0, 5, 0);
+        cardPanel.add(createLabel("USUARIO"), gbc);
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 0, 15, 0);
+        txtUsername = new JTextField();
+        styleField(txtUsername);
+        cardPanel.add(txtUsername, gbc);
+
+        // CONTRASEÑA
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 0, 5, 0);
+        cardPanel.add(createLabel("CONTRASEÑA"), gbc);
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 0, 8, 0); // Menos espacio para el link de forgot password
+        
+        // Contraseña con botón de ojo
+        JPanel passPanel = new JPanel(new BorderLayout());
+        passPanel.setOpaque(false);
+        passPanel.setPreferredSize(new Dimension(0, 45));
+        
+        txtPassword = new JPasswordField();
+        styleField(txtPassword);
+        txtPassword.setBorder(null); // Quitar borde interno
+        
+        JButton btnEye = new JButton("👁");
+        btnEye.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 14));
+        btnEye.setForeground(TEXT_MUTED);
+        btnEye.setContentAreaFilled(false);
+        btnEye.setBorderPainted(false);
+        btnEye.setFocusPainted(false);
+        btnEye.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnEye.addActionListener(e -> {
+            isPasswordVisible = !isPasswordVisible;
+            txtPassword.setEchoChar(isPasswordVisible ? (char) 0 : '•');
+        });
+
+        JPanel passWrapper = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(FIELD_BG);
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
+                g2.setColor(FIELD_BORDER);
+                g2.draw(new RoundRectangle2D.Float(1, 1, getWidth() - 2, getHeight() - 2, 8, 8));
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        passWrapper.setOpaque(false);
+        passWrapper.setBorder(new EmptyBorder(5, 10, 5, 0));
+        passWrapper.add(txtPassword, BorderLayout.CENTER);
+        passWrapper.add(btnEye, BorderLayout.EAST);
+        passPanel.add(passWrapper, BorderLayout.CENTER);
+
+        cardPanel.add(passPanel, gbc);
+
+        // Forgot password link
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 0, 15, 0);
+        JPanel linkPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        linkPanel.setOpaque(false);
+        JLabel lblForgot = new JLabel("¿Olvidaste tu contraseña?");
+        lblForgot.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblForgot.setForeground(TEXT_LIGHT);
+        lblForgot.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        linkPanel.add(lblForgot);
+        cardPanel.add(linkPanel, gbc);
+
+        // Login Button
+        gbc.gridy++;
+        gbc.insets = new Insets(5, 0, 20, 0);
+        btnLogin = createLoginButton();
+        cardPanel.add(btnLogin, gbc);
+
+        // Separator "Acceso Rápido"
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 0, 15, 0);
+        JPanel separatorPanel = new JPanel(new BorderLayout());
+        separatorPanel.setOpaque(false);
+        JLabel lblAcceso = new JLabel("Acceso Rápido", SwingConstants.CENTER);
+        lblAcceso.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lblAcceso.setForeground(TEXT_MUTED);
+        
+        JPanel leftLine = createLine();
+        JPanel rightLine = createLine();
+        
+        separatorPanel.add(leftLine, BorderLayout.WEST);
+        separatorPanel.add(lblAcceso, BorderLayout.CENTER);
+        separatorPanel.add(rightLine, BorderLayout.EAST);
+        cardPanel.add(separatorPanel, gbc);
+
+        // Acceso Rapido Box
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        JPanel quickAccessPanel = createQuickAccessPanel();
+        cardPanel.add(quickAccessPanel, gbc);
+
+        // Add Header and Card to center wrapper
+        centerWrapper.add(headerPanel);
+        centerWrapper.add(cardPanel);
+
+        // Allow center wrapper to not take full height if possible
+        JPanel centerContainer = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        centerContainer.setOpaque(false);
+        centerContainer.add(centerWrapper);
+        rootPanel.add(centerContainer, BorderLayout.CENTER);
+
+        // --- FOOTER ---
+        JPanel footer = new JPanel();
+        footer.setLayout(new BoxLayout(footer, BoxLayout.Y_AXIS));
+        footer.setOpaque(false);
+        footer.setBorder(new EmptyBorder(10, 0, 20, 0));
+
+        footer.add(Box.createVerticalStrut(20));
+
+        JLabel lblLinks = new JLabel("PRIVACIDAD      TÉRMINOS", SwingConstants.CENTER);
+        lblLinks.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        lblLinks.setForeground(TEXT_MUTED);
+        lblLinks.setAlignmentX(Component.CENTER_ALIGNMENT);
+        footer.add(lblLinks);
+        footer.add(Box.createVerticalStrut(10));
+
+        JLabel lblFifa = new JLabel("FIFA WORLD CUP - MÉXICO - USA - CANADÁ", SwingConstants.CENTER);
+        lblFifa.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        lblFifa.setForeground(TEXT_LIGHT);
+        lblFifa.setAlignmentX(Component.CENTER_ALIGNMENT);
+        footer.add(lblFifa);
+        footer.add(Box.createVerticalStrut(10));
+
+        JLabel lblCopyright = new JLabel("© 2026 Sistema de Apuestas Global. Todos los derechos reservados.", SwingConstants.CENTER);
+        lblCopyright.setFont(new Font("Segoe UI", Font.PLAIN, 9));
+        lblCopyright.setForeground(new Color(90, 100, 120));
+        lblCopyright.setAlignmentX(Component.CENTER_ALIGNMENT);
+        footer.add(lblCopyright);
+
+        rootPanel.add(footer, BorderLayout.SOUTH);
+
+        setContentPane(rootPanel);
+
+        // Listeners for login
         btnLogin.addActionListener(e -> intentarLogin());
         txtPassword.addActionListener(e -> intentarLogin());
         txtUsername.addActionListener(e -> txtPassword.requestFocus());
-
-        setContentPane(root);
     }
 
-    // ---------- helpers de estilo ----------
-
-    private JLabel makeLabel(String text) {
+    private JLabel createLabel(String text) {
         JLabel lbl = new JLabel(text);
-        lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lbl.setForeground(new Color(148, 163, 184));
-        lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lbl.setForeground(TEXT_MUTED);
         return lbl;
     }
 
     private void styleField(JTextField field) {
         field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        field.setForeground(TEXT_MAIN);
-        field.setBackground(FIELD_BG);
-        field.setCaretColor(ACCENT);
-        field.setPreferredSize(new Dimension(Integer.MAX_VALUE, 42));
-        field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
-        field.setAlignmentX(Component.LEFT_ALIGNMENT);
-        field.setBorder(BorderFactory.createCompoundBorder(
-            new RoundedBorder(FIELD_BORDER, 10),
-            new EmptyBorder(4, 14, 4, 14)
-        ));
-        field.setOpaque(true);
-
-        // Hover: resaltar borde
-        field.addFocusListener(new FocusAdapter() {
-            @Override public void focusGained(FocusEvent e) {
-                field.setBorder(BorderFactory.createCompoundBorder(
-                    new RoundedBorder(ACCENT, 10),
-                    new EmptyBorder(4, 14, 4, 14)
-                ));
-            }
-            @Override public void focusLost(FocusEvent e) {
-                field.setBorder(BorderFactory.createCompoundBorder(
-                    new RoundedBorder(FIELD_BORDER, 10),
-                    new EmptyBorder(4, 14, 4, 14)
-                ));
-            }
-        });
+        field.setForeground(Color.WHITE);
+        field.setBackground(new Color(0,0,0,0)); // Transparente porque pintamos el fondo en wrapper o componente custom
+        field.setCaretColor(Color.WHITE);
+        field.setOpaque(false);
+        field.setBorder(new EmptyBorder(5, 15, 5, 15));
+        
+        // Si no es el password field (que tiene wrapper), crear panel para fondo
+        if (!(field instanceof JPasswordField)) {
+            field.setPreferredSize(new Dimension(0, 45));
+            field.setOpaque(true);
+            field.setBackground(FIELD_BG);
+            field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(FIELD_BORDER, 1),
+                new EmptyBorder(5, 15, 5, 15)
+            ));
+        }
     }
 
     private void styleCombo(JComboBox<String> combo) {
+        // Quitar el estilo de Nimbus por completo para este componente
+        combo.setUI(new BasicComboBoxUI());
         combo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        combo.setForeground(TEXT_MAIN);
+        combo.setForeground(Color.WHITE);
         combo.setBackground(FIELD_BG);
-        combo.setPreferredSize(new Dimension(Integer.MAX_VALUE, 42));
-        combo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
-        combo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        combo.setPreferredSize(new Dimension(0, 45));
         combo.setBorder(BorderFactory.createCompoundBorder(
-            new RoundedBorder(FIELD_BORDER, 10),
-            new EmptyBorder(4, 10, 4, 10)
+            BorderFactory.createLineBorder(FIELD_BORDER, 1),
+            new EmptyBorder(0, 10, 0, 10)
         ));
+        
         combo.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                setBackground(isSelected ? ACCENT : FIELD_BG);
-                setForeground(TEXT_MAIN);
-                setBorder(new EmptyBorder(4, 10, 4, 10));
+                setBackground(isSelected ? BORDER_CARD : FIELD_BG);
+                setForeground(Color.WHITE);
+                setBorder(new EmptyBorder(8, 10, 8, 10));
                 return this;
             }
         });
     }
 
-    private JButton makeLoginButton() {
-        JButton btn = new JButton("Iniciar Sesión") {
+    private JButton createLoginButton() {
+        JButton btn = new JButton("Iniciar Sesión  →") {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                Color base = getModel().isRollover() ? ACCENT_HOVER : ACCENT;
-                GradientPaint gp = new GradientPaint(0, 0, base.brighter(), getWidth(), getHeight(), base);
+                
+                // Gradient background
+                GradientPaint gp;
+                if (getModel().isRollover()) {
+                    gp = new GradientPaint(0, 0, BUTTON_GRAD1.brighter(), getWidth(), 0, BUTTON_GRAD2.brighter());
+                } else {
+                    gp = new GradientPaint(0, 0, BUTTON_GRAD1, getWidth(), 0, BUTTON_GRAD2);
+                }
                 g2.setPaint(gp);
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 12, 12));
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 10, 10));
+                
+                // Overlay text
+                FontMetrics fm = g2.getFontMetrics(getFont());
+                Rectangle stringBounds = fm.getStringBounds(getText(), g2).getBounds();
+                int textX = (getWidth() - stringBounds.width) / 2;
+                int textY = (getHeight() - stringBounds.height) / 2 + fm.getAscent();
+                
+                g2.setColor(BTN_TEXT_DARK);
+                g2.drawString(getText(), textX, textY);
+                
                 g2.dispose();
-                super.paintComponent(g);
             }
         };
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        btn.setForeground(Color.WHITE);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 18));
         btn.setOpaque(false);
         btn.setContentAreaFilled(false);
         btn.setBorderPainted(false);
         btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
-        btn.setPreferredSize(new Dimension(Integer.MAX_VALUE, 46));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setPreferredSize(new Dimension(0, 50));
         return btn;
     }
 
-    // ---------- borde redondeado personalizado ----------
-    private static class RoundedBorder implements javax.swing.border.Border {
-        private final Color color;
-        private final int radius;
-        RoundedBorder(Color color, int radius) { this.color = color; this.radius = radius; }
-        @Override public Insets getBorderInsets(Component c) { return new Insets(radius / 2, radius, radius / 2, radius); }
-        @Override public boolean isBorderOpaque() { return false; }
-        @Override public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(color);
-            g2.setStroke(new BasicStroke(1.5f));
-            g2.draw(new RoundRectangle2D.Float(x + 0.75f, y + 0.75f, w - 1.5f, h - 1.5f, radius, radius));
-            g2.dispose();
-        }
+    private JPanel createLine() {
+        JPanel line = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.setColor(new Color(255, 255, 255, 20));
+                g.drawLine(0, getHeight() / 2, getWidth(), getHeight() / 2);
+            }
+        };
+        line.setOpaque(false);
+        line.setPreferredSize(new Dimension(80, 20));
+        return line;
     }
 
-    // ---------- lógica de negocio ----------
+    private JPanel createQuickAccessPanel() {
+        JPanel qa = new JPanel(new BorderLayout(10, 0)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(FIELD_BG);
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 12, 12));
+                g2.setColor(FIELD_BORDER);
+                g2.draw(new RoundRectangle2D.Float(1, 1, getWidth() - 2, getHeight() - 2, 12, 12));
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        qa.setOpaque(false);
+        qa.setBorder(new EmptyBorder(12, 15, 12, 15));
+
+        // Icon circle
+        JLabel lblIcon = new JLabel("⚽", SwingConstants.CENTER) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(0, 180, 216, 30)); // Fondo cyan
+                int size = Math.min(getWidth(), getHeight());
+                g2.fillOval((getWidth() - size)/2, (getHeight() - size)/2, size, size);
+                super.paintComponent(g);
+                g2.dispose();
+            }
+        };
+        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 18));
+        lblIcon.setForeground(new Color(0, 180, 216)); // Cyan
+        lblIcon.setPreferredSize(new Dimension(36, 36));
+        
+        // Cargar partido real desde la BD
+        String matchText = "Sin partidos programados";
+        String faseText = "Próximo Encuentro";
+        try {
+            dao.PartidoDAO pDao = new dao.PartidoDAO();
+            java.util.List<modelos.Partido> partidos = pDao.obtenerPartidos();
+            if (!partidos.isEmpty()) {
+                // Tomar el último partido ingresado o uno al azar
+                modelos.Partido p = partidos.get(partidos.size() - 1);
+                String local = p.getEquipoLocal() != null ? p.getEquipoLocal().getNombre() : "TBD";
+                String visita = p.getEquipoVisita() != null ? p.getEquipoVisita().getNombre() : "TBD";
+                matchText = local + " vs " + visita;
+                faseText = "Fase: " + p.getFase();
+            }
+        } catch (Exception e) {
+            System.err.println("No se pudieron cargar los partidos en el Login.");
+        }
+
+        // Match Info
+        JPanel infoPanel = new JPanel();
+        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
+        infoPanel.setOpaque(false);
+        JLabel lblSub = new JLabel(faseText);
+        lblSub.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        lblSub.setForeground(TEXT_LIGHT);
+        JLabel lblMatch = new JLabel(matchText);
+        lblMatch.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblMatch.setForeground(Color.WHITE);
+        infoPanel.add(lblSub);
+        infoPanel.add(Box.createVerticalStrut(4));
+        infoPanel.add(lblMatch);
+
+        // Live Badge
+        JLabel lblLive = new JLabel("EN VIVO", SwingConstants.CENTER) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(62, 49, 60)); // Fondo rojizo/morado
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
+                super.paintComponent(g);
+                g2.dispose();
+            }
+        };
+        lblLive.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        lblLive.setForeground(new Color(226, 149, 120)); // Texto salmon
+        lblLive.setPreferredSize(new Dimension(55, 24));
+        lblLive.setBorder(new EmptyBorder(0,0,0,0));
+
+        JPanel badgeWrapper = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 4));
+        badgeWrapper.setOpaque(false);
+        badgeWrapper.add(lblLive);
+
+        qa.add(lblIcon, BorderLayout.WEST);
+        qa.add(infoPanel, BorderLayout.CENTER);
+        qa.add(badgeWrapper, BorderLayout.EAST);
+
+        return qa;
+    }
+
     private void intentarLogin() {
         String rol  = (String) cbRol.getSelectedItem();
         String user = txtUsername.getText().trim();
@@ -276,7 +521,7 @@ public class VentanaLogin extends JFrame {
         }
 
         UsuarioDAO dao = new UsuarioDAO();
-        Usuario usuarioLogueado = dao.validarLogin(user, pass, rol);
+        Usuario usuarioLogueado = dao.validarLogin(user, pass, rol.toLowerCase());
 
         if (usuarioLogueado != null) {
             dispose();

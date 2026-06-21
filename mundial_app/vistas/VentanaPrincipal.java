@@ -6,127 +6,141 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
+import java.util.ArrayList;
+import java.util.List;
 
 public class VentanaPrincipal extends JFrame {
 
-    // Paleta unificada con VentanaLogin
-    private static final Color BG_DARK     = new Color(10, 10, 20);
-    private static final Color BG_SIDEBAR  = new Color(14, 14, 28);
-    private static final Color ACCENT      = new Color(59, 130, 246);
-    private static final Color GOLD        = new Color(251, 191, 36);
-    private static final Color TEXT_MAIN   = new Color(241, 245, 249);
-    private static final Color TEXT_HINT   = new Color(100, 116, 139);
-    private static final Color HEADER_BG   = new Color(15, 15, 32);
-    private static final Color DIVIDER     = new Color(30, 30, 55);
+    // Paleta premium de la aplicación
+    private static final Color BG_APP          = new Color(11, 19, 32);     // #0B1320
+    private static final Color BG_HEADER       = new Color(14, 23, 38);     // #0E1726
+    private static final Color BG_CARD         = new Color(22, 32, 50);     // #162032
+    private static final Color BORDER_CARD     = new Color(44, 58, 83);     // #2C3A53
+    private static final Color TEXT_GOLD       = new Color(226, 185, 74);   // #E2B94A
+    private static final Color TEXT_LIGHT      = new Color(194, 203, 224);  // #C2CBE0
+    private static final Color TEXT_MUTED      = new Color(139, 149, 165);  // #8B95A5
+    private static final Color TEXT_CYAN       = new Color(0, 212, 255);    // #00D4FF
+    private static final Color TEXT_RED        = new Color(255, 107, 107);  // #FF6B6B
+
+    private CardLayout cardLayout;
+    private JPanel centralPanel;
+    private List<NavButton> navButtons;
 
     public VentanaPrincipal(Usuario usuarioActual) {
-        setTitle("Mundial 2026 — " + usuarioActual.getUsername());
-        setSize(1050, 680);
-        setMinimumSize(new Dimension(800, 500));
+        setTitle("World Cup Trophy Elite 2026 — " + usuarioActual.getUsername());
+        setSize(1100, 720);
+        setMinimumSize(new Dimension(900, 600));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // ---- PANEL PRINCIPAL ----
+        // root panel
         JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(BG_DARK);
+        root.setBackground(BG_APP);
 
-        // ---- BARRA SUPERIOR ----
+        // ---- 1. BARRA SUPERIOR (HEADER) ----
         JPanel topBar = new JPanel(new BorderLayout()) {
-            @Override protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
-                g2.setColor(HEADER_BG);
+                g2.setColor(BG_HEADER);
                 g2.fillRect(0, 0, getWidth(), getHeight());
-                // Línea inferior separadora
-                g2.setColor(DIVIDER);
-                g2.fillRect(0, getHeight() - 1, getWidth(), 1);
+                g2.setColor(BORDER_CARD);
+                g2.fillRect(0, getHeight() - 1, getWidth(), 1); // Línea divisora inferior
                 g2.dispose();
+                super.paintComponent(g);
             }
         };
         topBar.setOpaque(false);
-        topBar.setPreferredSize(new Dimension(0, 62));
-        topBar.setBorder(new EmptyBorder(0, 20, 0, 20));
+        topBar.setPreferredSize(new Dimension(0, 65));
+        topBar.setBorder(new EmptyBorder(0, 25, 0, 25));
 
-        // Logo + título izquierda
-        JPanel topLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        // Izquierda: Logo y títulos
+        JPanel topLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         topLeft.setOpaque(false);
-        topLeft.setBorder(new EmptyBorder(10, 0, 0, 0));
+        topLeft.setBorder(new EmptyBorder(12, 0, 0, 0));
 
-        JLabel lblTrophy = new JLabel("🏆");
-        lblTrophy.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 26));
+        JLabel lblLogo = new JLabel("🏆");
+        lblLogo.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 28));
 
-        JLabel lblAppName = new JLabel("Mundial 2026");
+        JLabel lblAppName = new JLabel("MUNDIAL 2026");
         lblAppName.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblAppName.setForeground(TEXT_MAIN);
+        lblAppName.setForeground(Color.WHITE);
 
-        JLabel lblDot = new JLabel("·");
-        lblDot.setForeground(TEXT_HINT);
-        lblDot.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+        JLabel lblDot = new JLabel("•");
+        lblDot.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblDot.setForeground(TEXT_GOLD);
 
-        JLabel lblSub = new JLabel("Sistema de Apuestas");
+        JLabel lblSub = new JLabel("Dashboard Administrativo");
         lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        lblSub.setForeground(TEXT_HINT);
+        lblSub.setForeground(TEXT_LIGHT);
 
-        topLeft.add(lblTrophy);
+        topLeft.add(lblLogo);
         topLeft.add(lblAppName);
         topLeft.add(lblDot);
         topLeft.add(lblSub);
 
-        // Info usuario + botón logout derecha
-        JPanel topRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        // Derecha: Usuario y Cerrar sesión
+        JPanel topRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         topRight.setOpaque(false);
-        topRight.setBorder(new EmptyBorder(10, 0, 0, 0));
+        topRight.setBorder(new EmptyBorder(12, 0, 0, 0));
 
-        // Badge de rol
+        // Badge de Rol
         boolean isAdmin = "admin".equalsIgnoreCase(usuarioActual.getRol());
-        Color badgeColor = isAdmin ? new Color(239, 68, 68) : ACCENT;
-        String roleLabel = isAdmin ? "ADMIN" : "USUARIO";
-        JLabel lblRoleBadge = new JLabel(roleLabel) {
-            @Override protected void paintComponent(Graphics g) {
+        String roleLabel = isAdmin ? "ADMINISTRADOR" : "APOSTADOR";
+        Color badgeBg = isAdmin ? new Color(255, 107, 107, 30) : new Color(0, 212, 255, 30);
+        Color badgeBorder = isAdmin ? TEXT_RED : TEXT_CYAN;
+
+        JLabel lblRoleBadge = new JLabel(" " + roleLabel + " ") {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(badgeColor.darker());
+                g2.setColor(badgeBg);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
-                super.paintComponent(g);
+                g2.setColor(badgeBorder);
+                g2.draw(new RoundRectangle2D.Float(0, 0, getWidth() - 1, getHeight() - 1, 8, 8));
                 g2.dispose();
+                super.paintComponent(g);
             }
         };
-        lblRoleBadge.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        lblRoleBadge.setForeground(Color.WHITE);
+        lblRoleBadge.setFont(new Font("Consolas", Font.BOLD, 10));
+        lblRoleBadge.setForeground(badgeBorder);
         lblRoleBadge.setOpaque(false);
-        lblRoleBadge.setBorder(new EmptyBorder(2, 8, 2, 8));
+        lblRoleBadge.setBorder(new EmptyBorder(3, 8, 3, 8));
 
         JLabel lblUserIcon = new JLabel("👤");
-        lblUserIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 18));
+        lblUserIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
 
         JLabel lblUsername = new JLabel(usuarioActual.getUsername());
-        lblUsername.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        lblUsername.setForeground(TEXT_MAIN);
+        lblUsername.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblUsername.setForeground(Color.WHITE);
 
-        // Botón logout
+        // Botón Logout
         JButton btnLogout = new JButton("Cerrar sesión") {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                Color c = getModel().isRollover() ? new Color(60, 20, 20) : new Color(40, 15, 15);
-                g2.setColor(c);
+                Color bg = getModel().isRollover() ? new Color(255, 107, 107, 30) : new Color(255, 107, 107, 10);
+                g2.setColor(bg);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
-                g2.setColor(new Color(239, 68, 68));
-                g2.setStroke(new BasicStroke(1f));
-                g2.draw(new RoundRectangle2D.Float(0.5f, 0.5f, getWidth() - 1, getHeight() - 1, 8, 8));
+                g2.setColor(TEXT_RED);
+                g2.draw(new RoundRectangle2D.Float(0, 0, getWidth() - 1, getHeight() - 1, 8, 8));
                 g2.dispose();
-                super.paintComponent(g);
+                
+                FontMetrics fm = g2.getFontMetrics(getFont());
+                int textX = (getWidth() - fm.stringWidth(getText())) / 2;
+                int textY = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+                g.setColor(TEXT_RED);
+                g.drawString(getText(), textX, textY);
             }
         };
         btnLogout.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnLogout.setForeground(new Color(239, 68, 68));
-        btnLogout.setOpaque(false);
         btnLogout.setContentAreaFilled(false);
         btnLogout.setBorderPainted(false);
         btnLogout.setFocusPainted(false);
-        btnLogout.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnLogout.setBorder(new EmptyBorder(6, 14, 6, 14));
-
+        btnLogout.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnLogout.setPreferredSize(new Dimension(110, 30));
         btnLogout.addActionListener(e -> {
             dispose();
             SwingUtilities.invokeLater(() -> new VentanaLogin().setVisible(true));
@@ -135,79 +149,175 @@ public class VentanaPrincipal extends JFrame {
         topRight.add(lblRoleBadge);
         topRight.add(lblUserIcon);
         topRight.add(lblUsername);
-        topRight.add(Box.createHorizontalStrut(4));
+        topRight.add(Box.createHorizontalStrut(5));
         topRight.add(btnLogout);
 
         topBar.add(topLeft, BorderLayout.WEST);
         topBar.add(topRight, BorderLayout.EAST);
+        root.add(topBar, BorderLayout.NORTH);
 
-        // ---- PESTAÑAS ----
-        JTabbedPane tabs = new JTabbedPane(JTabbedPane.TOP) {
-            @Override protected void paintComponent(Graphics g) {
+        // ---- 2. CONTENEDOR CENTRAL DE PESTAÑAS Y VISTAS ----
+        JPanel mainContainer = new JPanel(new BorderLayout());
+        mainContainer.setOpaque(false);
+
+        // Barra de Pestañas Personalizada (Navigation Bar)
+        JPanel navBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0)) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
-                g2.setColor(BG_DARK);
+                g2.setColor(BG_HEADER);
                 g2.fillRect(0, 0, getWidth(), getHeight());
+                g2.setColor(BORDER_CARD);
+                g2.fillRect(0, getHeight() - 1, getWidth(), 1); // Separador
                 g2.dispose();
                 super.paintComponent(g);
             }
         };
-        tabs.setOpaque(false);
-        tabs.setBackground(BG_DARK);
-        tabs.setForeground(TEXT_MAIN);
-        tabs.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        tabs.setBorder(new EmptyBorder(8, 8, 8, 8));
+        navBar.setOpaque(false);
+        navBar.setPreferredSize(new Dimension(0, 48));
+        navBar.setBorder(new EmptyBorder(0, 20, 0, 20));
 
-        // Cambiar colores de tabs via UIManager solo para esta instancia no es posible,
-        // así que usamos setBackground/setForeground de las pestañas con un UIManager override
-        UIManager.put("TabbedPane.selected",    new Color(25, 25, 50));
-        UIManager.put("TabbedPane.background",  BG_DARK);
-        UIManager.put("TabbedPane.foreground",  TEXT_HINT);
-        UIManager.put("TabbedPane.contentAreaColor", BG_DARK);
-        UIManager.put("TabbedPane.darkShadow",  BG_DARK);
-        UIManager.put("TabbedPane.shadow",      DIVIDER);
-        UIManager.put("TabbedPane.light",       DIVIDER);
-        UIManager.put("TabbedPane.focus",       ACCENT);
-        SwingUtilities.updateComponentTreeUI(tabs);
+        // Contenedor principal con CardLayout
+        cardLayout = new CardLayout();
+        centralPanel = new JPanel(cardLayout);
+        centralPanel.setOpaque(false);
 
-        // Pestañas disponibles para todos
-        tabs.addTab("  👥  Apostadores  ", new PanelApostadores());
-        tabs.addTab("  🔮  Predicciones  ", new PanelPredicciones());
-        tabs.addTab("  🏆  Resultados  ", new PanelResultados());
+        navButtons = new ArrayList<>();
 
-        // Pestañas solo para admin
+        // Registrar Paneles
+        agregarPestaña(navBar, "  👥  Apostadores  ", "Apostadores", new PanelApostadores(isAdmin));
+        agregarPestaña(navBar, "  🔮  Predicciones  ", "Predicciones", new PanelPredicciones(isAdmin));
+        agregarPestaña(navBar, "  🏆  Resultados  ", "Resultados", new PanelResultados());
+
         if (isAdmin) {
-            tabs.addTab("  🛡️  Equipos  ", new PanelEquipos());
-            tabs.addTab("  ⚽  Partidos  ", new PanelPartidos());
+            agregarPestaña(navBar, "  🛡️  Equipos  ", "Equipos", new PanelEquipos());
+            agregarPestaña(navBar, "  ⚽  Partidos  ", "Partidos", new PanelPartidos());
         }
 
-        // ---- BARRA DE ESTADO INFERIOR ----
-        JPanel statusBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
-        statusBar.setBackground(HEADER_BG);
-        statusBar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, DIVIDER));
+        // Seleccionar la primera pestaña por defecto
+        if (!navButtons.isEmpty()) {
+            seleccionarPestaña(navButtons.get(0));
+        }
 
-        JLabel lblStatus = new JLabel("⚡  Conectado como: " + usuarioActual.getUsername() + " | Rol: " + usuarioActual.getRol().toUpperCase());
-        lblStatus.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblStatus.setForeground(TEXT_HINT);
-        statusBar.add(lblStatus);
+        mainContainer.add(navBar, BorderLayout.NORTH);
+        mainContainer.add(centralPanel, BorderLayout.CENTER);
+        root.add(mainContainer, BorderLayout.CENTER);
 
-        JLabel lblRight = new JLabel("FIFA World Cup · México · USA · Canadá 2026");
-        lblRight.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblRight.setForeground(TEXT_HINT);
-        statusBar.setLayout(new BorderLayout());
-        JPanel sLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
-        sLeft.setOpaque(false);
-        sLeft.add(lblStatus);
-        JPanel sRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 4));
-        sRight.setOpaque(false);
-        sRight.add(lblRight);
-        statusBar.add(sLeft, BorderLayout.WEST);
-        statusBar.add(sRight, BorderLayout.EAST);
+        // ---- 3. BARRA DE ESTADO INFERIOR ----
+        JPanel statusBar = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setColor(BG_HEADER);
+                g2.fillRect(0, 0, getWidth(), getHeight());
+                g2.setColor(BORDER_CARD);
+                g2.fillRect(0, 0, getWidth(), 1); // Línea superior
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        statusBar.setOpaque(false);
+        statusBar.setPreferredSize(new Dimension(0, 30));
+        statusBar.setBorder(new EmptyBorder(0, 25, 0, 25));
 
-        // Ensamblar todo
-        root.add(topBar, BorderLayout.NORTH);
-        root.add(tabs,   BorderLayout.CENTER);
+        JLabel lblStatus = new JLabel("⚡ Conectado como: " + usuarioActual.getUsername() + " | Rol: " + usuarioActual.getRol().toUpperCase());
+        lblStatus.setFont(new Font("Consolas", Font.PLAIN, 11));
+        lblStatus.setForeground(TEXT_MUTED);
+
+        JLabel lblRight = new JLabel("FIFA World Cup 2026 Admin Console  •  v1.4.0");
+        lblRight.setFont(new Font("Consolas", Font.PLAIN, 11));
+        lblRight.setForeground(TEXT_MUTED);
+
+        statusBar.add(lblStatus, BorderLayout.WEST);
+        statusBar.add(lblRight, BorderLayout.EAST);
         root.add(statusBar, BorderLayout.SOUTH);
 
         setContentPane(root);
+    }
+
+    private void agregarPestaña(JPanel navBar, String title, String cardName, JPanel panel) {
+        centralPanel.add(panel, cardName);
+        NavButton btn = new NavButton(title, cardName);
+        btn.addActionListener(e -> seleccionarPestaña(btn));
+        navButtons.add(btn);
+        navBar.add(btn);
+    }
+
+    private void seleccionarPestaña(NavButton seleccionado) {
+        for (NavButton btn : navButtons) {
+            btn.setActive(btn == seleccionado);
+        }
+        cardLayout.show(centralPanel, seleccionado.getCardName());
+        repaint();
+    }
+
+    // --- CLASE DE BOTÓN DE NAVEGACIÓN PERSONALIZADO ---
+    private class NavButton extends JButton {
+        private final String cardName;
+        private boolean isActive = false;
+
+        public NavButton(String text, String cardName) {
+            super(text);
+            this.cardName = cardName;
+            setFont(new Font("Segoe UI", Font.BOLD, 15));
+            setForeground(TEXT_LIGHT);
+            setContentAreaFilled(false);
+            setBorderPainted(false);
+            setFocusPainted(false);
+            setCursor(new Cursor(Cursor.HAND_CURSOR));
+            setPreferredSize(new Dimension(190, 48));
+
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    if (!isActive) {
+                        setForeground(Color.WHITE);
+                    }
+                }
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    if (!isActive) {
+                        setForeground(TEXT_LIGHT);
+                    }
+                }
+            });
+        }
+
+        public String getCardName() {
+            return cardName;
+        }
+
+        public void setActive(boolean active) {
+            this.isActive = active;
+            setForeground(active ? TEXT_GOLD : TEXT_LIGHT);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            if (isActive) {
+                // Fondo activo
+                g2.setColor(new Color(22, 32, 50, 150));
+                g2.fillRect(0, 0, getWidth(), getHeight());
+                // Línea inferior de indicador activo (Dorado)
+                g2.setColor(TEXT_GOLD);
+                g2.fillRect(0, getHeight() - 3, getWidth(), 3);
+            } else if (getModel().isRollover()) {
+                // Fondo hover suave
+                g2.setColor(new Color(22, 32, 50, 80));
+                g2.fillRect(0, 0, getWidth(), getHeight());
+            }
+
+            // Pintar texto
+            FontMetrics fm = g2.getFontMetrics(getFont());
+            int textX = (getWidth() - fm.stringWidth(getText())) / 2;
+            int textY = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+            g2.setColor(getForeground());
+            g2.drawString(getText(), textX, textY);
+
+            g2.dispose();
+        }
     }
 }
