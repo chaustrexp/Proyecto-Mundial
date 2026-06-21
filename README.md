@@ -1,32 +1,72 @@
-# Sistema de Administración Mundial 2026
+<div align="center">
+  <h1>🏆 Sistema de Administración: Mundial 2026</h1>
+  <p>Una aplicación de escritorio profesional para la gestión administrativa de predicciones (quinielas/pollas) de la Copa Mundial de la FIFA 2026.</p>
 
-Una aplicación de escritorio desarrollada en **Java Swing** para administrar una "polla" (quiniela) del Mundial 2026. Permite gestionar equipos, registrar apostadores, guardar predicciones y calcular puntajes según los resultados reales de los partidos.
+  ![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+  ![MySQL](https://img.shields.io/badge/MySQL-00000F?style=for-the-badge&logo=mysql&logoColor=white)
+  ![Swing](https://img.shields.io/badge/Swing-GUI-blue?style=for-the-badge)
+  ![MVC](https://img.shields.io/badge/Architecture-MVC-success?style=for-the-badge)
+</div>
 
-## 🚀 Características
+<br>
 
-- **Tema Oscuro Integrado:** Interfaz gráfica moderna (basada en Nimbus) completamente estilizada con un tema oscuro para mayor comodidad visual.
-- **Gestión de Apostadores:** Registro de participantes y visualización de puntos acumulados.
-- **Gestión de Equipos y Partidos:** Creación de partidos por fases del mundial.
-- **Sistema de Predicciones:** Interfaz para que los apostadores ingresen sus pronósticos.
-- **Cálculo Automático de Puntos:** Actualización del ranking general al ingresar los resultados reales de los partidos.
-- **Persistencia de Datos:** Conexión a base de datos MySQL de forma eficiente usando el patrón DAO.
+## 🚀 Descripción General
+Desarrollada en **Java Swing**, esta aplicación centraliza el control de un juego de predicciones deportivas. Implementa el patrón arquitectónico **MVC (Modelo-Vista-Controlador)** y se conecta a una base de datos MySQL local mediante DAO (Data Access Object) con protección nativa contra inyecciones SQL. 
 
-## 🛠️ Tecnologías Utilizadas
+Cuenta con un control de acceso por roles (Administrador y Usuario), asegurando que las operaciones críticas de negocio estén protegidas.
 
-- **Lenguaje:** Java
-- **Interfaz Gráfica:** Java Swing
-- **Base de Datos:** MySQL / MariaDB (vía XAMPP)
-- **Conector JDBC:** MySQL Connector/J
+---
 
-## 📂 Estructura del Proyecto
+## ✨ Características Principales
 
-- `vistas/`: Contiene todos los paneles de la interfaz de usuario (`PanelEquipos`, `PanelPartidos`, etc.) y la ventana principal.
-- `modelos/`: Clases que representan la lógica del negocio (`Apostador`, `Equipo`, `Partido`, `Prediccion`).
-- `dao/`: Lógica de conexión a base de datos (`ConexionBD`) y ejecución de consultas SQL (`MundialDAO`).
-- `utils/`: Utilidades generales como el gestor de temas oscuros (`ThemeManager`).
-- `lib/`: Directorio destinado para las librerías externas (como el `.jar` de MySQL).
+### 🔒 Sistema de Roles y Seguridad
+- **Login Autenticado:** Diferenciación en tiempo real entre Administradores y Usuarios estándar.
+- **Validaciones Físicas Estrictas:** Controles en la interfaz (DocumentFilters) y lógica de controladores bloqueando caracteres no válidos o absurdos (ej: no se permiten números negativos ni goles imposibles, nombres sin números).
+- **Protección SQL:** Uso de `PreparedStatement` y `try-with-resources` para máxima seguridad y eficiencia de memoria.
 
-## ⚙️ Instalación y Configuración
+### 👥 Gestión de Apostadores
+- Módulo exclusivo de registro y visualización en tabla viva.
+- Barra de búsqueda interactiva (solo letras) y tabla de posiciones general (Ranking) en tiempo real.
+
+### ⚽ Simulador de Partidos
+- **Creación Inteligente:** Programe partidos evitando cruces inválidos (mismo equipo) o conflictos de Fase de Grupos.
+- **Simulación en Vivo:** Interfaz de marcador visual simulado con dropdowns de estadios oficiales del Mundial 2026.
+
+### 🔮 Predicciones y 🏆 Resultados
+- **Automatización de Puntos:** Cuando el Administrador carga el marcador final oficial, el sistema automáticamente:
+  - **Otorga 5 puntos:** Si el apostador acertó el marcador exacto.
+  - **Otorga 3 puntos:** Si el apostador acertó al equipo ganador o el empate.
+- Restricción de permisos donde el administrador audita resultados, pero solo el usuario registra predicciones.
+
+---
+
+## 🛠️ Tecnologías
+
+| Tecnología | Descripción |
+| --- | --- |
+| **Java 26+** | Lógica core y programación Orientada a Objetos. |
+| **Java Swing / AWT** | Interfaz Gráfica (GUI) estilizada manualmente (modo oscuro, flat design). |
+| **MySQL (XAMPP)** | Persistencia de datos relacionales. |
+| **JDBC** | Driver nativo de comunicación a base de datos. |
+
+---
+
+## 📂 Arquitectura (MVC)
+
+El proyecto está separado estructuradamente por responsabilidades:
+
+```text
+📁 mundial_app/
+├── 📁 controladores/  # Lógica de negocio y validación profunda (PartidoController, etc.)
+├── 📁 dao/            # Capa de Acceso a Datos y Conexión JDBC (ConexionBD, etc.)
+├── 📁 modelos/        # Entidades del negocio (Apostador, Equipo, Partido...)
+├── 📁 vistas/         # Interfaces Gráficas y validación de input de usuario
+└── 📄 Main.java       # Punto de entrada de la aplicación
+```
+
+---
+
+## ⚙️ Instalación y Configuración Local
 
 1. **Clonar el repositorio:**
    ```bash
@@ -36,23 +76,17 @@ Una aplicación de escritorio desarrollada en **Java Swing** para administrar un
 
 2. **Configurar la Base de Datos:**
    - Inicia tu servidor local (ej. XAMPP con Apache y MySQL).
-   - Abre phpMyAdmin u otro gestor.
-   - Importa el archivo `mundial.sql` que se encuentra dentro de la carpeta `dao/` para crear la estructura de tablas.
+   - Abre phpMyAdmin (o tu gestor SQL preferido).
+   - Crea una base de datos llamada `mundial` e importa tu script SQL para crear las tablas necesarias (`usuarios`, `equipos`, `partidos`, `apostadores`, `predicciones`, `resultados`).
 
 3. **Añadir el Conector MySQL:**
-   - Descarga **MySQL Connector/J** (archivo `.jar`).
-   - Copia el archivo `.jar` descargado dentro de la carpeta `lib/` de este proyecto.
+   - Asegúrate de tener el **MySQL Connector/J** configurado en el *classpath* o IDE, o dentro de la carpeta `/lib` del proyecto si compilas por terminal.
 
-4. **Compilar y Ejecutar:**
-   Para compilar y correr la aplicación desde consola (estando dentro de la carpeta `mundial_app`):
-   
-   ```powershell
-   # Compilar el proyecto
-   javac -d bin -classpath "lib/*" $(Get-ChildItem -Recurse -Filter *.java | % {$_.FullName})
-   
-   # Ejecutar el programa
-   java -cp "bin;lib/*" Main
-   ```
+4. **Ejecutar:**
+   Puedes abrir la carpeta `mundial_app` en **VS Code**, **IntelliJ IDEA** o **Eclipse**. Simplemente corre la clase principal: `Main.java`.
 
-## ✒️ Autor
-Proyecto desarrollado por **chaustrexp**.
+---
+
+<div align="center">
+  <i>Desarrollado con pasión para el Mundial 2026 por <b>chaustrexp</b>.</i>
+</div>
