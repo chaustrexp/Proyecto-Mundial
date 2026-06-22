@@ -2,7 +2,7 @@ package Mundial;
 
 import java.util.Scanner;
 
-public class mundial5 {
+public class principal{
     static Scanner scanner = new Scanner(System.in);
 
     static String[] equipos = {

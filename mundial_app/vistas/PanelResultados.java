@@ -1,15 +1,19 @@
 package vistas;
 
 import controladores.ResultadoController;
+import dao.PrediccionDAO;
+import modelos.Apostador;
 import modelos.Partido;
+import modelos.Prediccion;
+import utils.SesionUsuario;
 
 import javax.swing.*;
 import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 import javax.swing.text.AbstractDocument;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DocumentFilter;
+import utils.ValidationUtils;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -30,12 +34,19 @@ public class PanelResultados extends JPanel {
     private static final Color FIELD_BORDER    = new Color(27, 38, 59);     // #1B263B
 
     private ResultadoController controller;
+    private PrediccionDAO prediccionDAO;
     private JPanel listaPanel; // Contenedor de las tarjetas de partidos
     private JComboBox<String> cbGrupoFilter;
     private JTextField txtFechaFilter;
     private JTextField txtBuscarResult;
+    private JPanel filtersCard;
+    private boolean isAdmin;
+    private Apostador apostadorSesion; // El apostador del usuario logueado (null si es admin)
 
-    public PanelResultados() {
+    public PanelResultados(boolean isAdmin) {
+        this.isAdmin = isAdmin;
+        this.prediccionDAO = new PrediccionDAO();
+        this.apostadorSesion = isAdmin ? null : SesionUsuario.getApostadorActual();
         controller = new ResultadoController();
         setLayout(new BorderLayout());
         setBackground(BG_APP);
@@ -52,12 +63,18 @@ public class PanelResultados extends JPanel {
         headerPanel.setOpaque(false);
         headerPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel lblTitle = new JLabel("Gestión de Resultados");
+        // Titulo e header segun rol
+        String titleText = isAdmin ? "Gestión de Resultados" : "Resultados del Torneo";
+        String descText = isAdmin
+            ? "<html><center>Panel centralizado para el registro y validación de marcadores oficiales del Mundial 2026. Los cambios impactan en tiempo real a la tabla de posiciones.</center></html>"
+            : "<html><center>Aquí puedes ver los resultados oficiales y cómo te fue con tus predicciones.</center></html>";
+
+        JLabel lblTitle = new JLabel(titleText);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 28));
         lblTitle.setForeground(Color.WHITE);
         lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel lblDesc = new JLabel("<html><center>Panel centralizado para el registro y validación de marcadores oficiales del Mundial 2026. Los cambios impactan en tiempo real a la tabla de posiciones.</center></html>");
+        JLabel lblDesc = new JLabel(descText);
         lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblDesc.setForeground(TEXT_MUTED);
         lblDesc.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -66,22 +83,50 @@ public class PanelResultados extends JPanel {
         headerPanel.add(lblTitle);
         headerPanel.add(Box.createVerticalStrut(10));
         headerPanel.add(lblDesc);
-        headerPanel.add(Box.createVerticalStrut(25));
+        headerPanel.add(Box.createVerticalStrut(20));
 
-        JButton btnRegistrar = createGoldButton("⊕ Registrar Nuevo Resultado");
-        btnRegistrar.addActionListener(e -> abrirDialogoRegistro());
-        btnRegistrar.setAlignmentX(Component.CENTER_ALIGNMENT);
-        headerPanel.add(btnRegistrar);
+        // Tarjeta resumen de puntos para el usuario
+        if (!isAdmin && apostadorSesion != null) {
+            JPanel userCard = createRoundedPanel();
+            userCard.setLayout(new FlowLayout(FlowLayout.CENTER, 30, 12));
+            userCard.setMaximumSize(new Dimension(800, 70));
+            userCard.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            JLabel lblHola = new JLabel("Apostador: " + apostadorSesion.getNombre());
+            lblHola.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            lblHola.setForeground(Color.WHITE);
+
+            JLabel sep = new JLabel("|");
+            sep.setForeground(BORDER_CARD);
+            sep.setFont(new Font("Segoe UI", Font.BOLD, 18));
+
+            JLabel lblPts = new JLabel("Tus puntos: " + apostadorSesion.getPuntosTotal() + " pts");
+            lblPts.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            lblPts.setForeground(TEXT_GOLD);
+
+            userCard.add(lblHola);
+            userCard.add(sep);
+            userCard.add(lblPts);
+            headerPanel.add(userCard);
+            headerPanel.add(Box.createVerticalStrut(10));
+        }
+
+        if (isAdmin) {
+            JButton btnRegistrar = createGoldButton("⊕ Registrar Nuevo Resultado");
+            btnRegistrar.addActionListener(e -> abrirDialogoRegistro());
+            btnRegistrar.setAlignmentX(Component.CENTER_ALIGNMENT);
+            headerPanel.add(btnRegistrar);
+        }
 
         contentPanel.add(headerPanel);
         contentPanel.add(Box.createVerticalStrut(30));
 
         // 2. PANEL DE FILTROS (con controles funcionales reales)
-        JPanel filtersCard = createRoundedPanel();
-        filtersCard.setLayout(new BoxLayout(filtersCard, BoxLayout.Y_AXIS));
+        filtersCard = createRoundedPanel();
+        filtersCard.setLayout(new GridLayout(1, 3, 20, 0));
         filtersCard.setBorder(new EmptyBorder(20, 25, 20, 25));
         filtersCard.setAlignmentX(Component.CENTER_ALIGNMENT);
-        filtersCard.setMaximumSize(new Dimension(800, 280));
+        filtersCard.setMaximumSize(new Dimension(800, 100));
 
         // Filtro por Grupo
         JPanel pGrupo = new JPanel();
@@ -178,9 +223,7 @@ public class PanelResultados extends JPanel {
         pBusqueda.add(lblB); pBusqueda.add(Box.createVerticalStrut(5)); pBusqueda.add(txtBuscarResult);
 
         filtersCard.add(pGrupo);
-        filtersCard.add(Box.createVerticalStrut(12));
         filtersCard.add(pFecha);
-        filtersCard.add(Box.createVerticalStrut(12));
         filtersCard.add(pBusqueda);
 
         contentPanel.add(filtersCard);
@@ -194,25 +237,27 @@ public class PanelResultados extends JPanel {
         
         contentPanel.add(listaPanel);
 
-        // 4. BOTÓN "AGREGAR NUEVO" (Punteado)
-        JPanel addCard = createDottedPanel();
-        addCard.setAlignmentX(Component.CENTER_ALIGNMENT);
-        addCard.setMaximumSize(new Dimension(800, 160));
-        
-        // Hacer clickeable todo el panel punteado
-        addCard.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                abrirDialogoRegistro();
-            }
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                addCard.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            }
-        });
-        
-        contentPanel.add(addCard);
-        contentPanel.add(Box.createVerticalStrut(40));
+        if (isAdmin) {
+            // 4. BOTÓN "AGREGAR NUEVO" (Punteado)
+            JPanel addCard = createDottedPanel();
+            addCard.setAlignmentX(Component.CENTER_ALIGNMENT);
+            addCard.setMaximumSize(new Dimension(800, 160));
+            
+            // Hacer clickeable todo el panel punteado
+            addCard.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    abrirDialogoRegistro();
+                }
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    addCard.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                }
+            });
+            
+            contentPanel.add(addCard);
+            contentPanel.add(Box.createVerticalStrut(40));
+        }
 
         JScrollPane scrollPane = new JScrollPane(contentPanel);
         scrollPane.setBorder(null);
@@ -232,6 +277,21 @@ public class PanelResultados extends JPanel {
         add(footer, BorderLayout.SOUTH);
 
         cargarPartidosFinalizados();
+
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                int width = getWidth();
+                if (width < 750) {
+                    filtersCard.setLayout(new GridLayout(3, 1, 0, 12));
+                    filtersCard.setMaximumSize(new Dimension(800, 280));
+                } else {
+                    filtersCard.setLayout(new GridLayout(1, 3, 20, 0));
+                    filtersCard.setMaximumSize(new Dimension(800, 100));
+                }
+                filtersCard.revalidate();
+            }
+        });
     }
 
     private void cargarPartidosFinalizados() {
@@ -374,12 +434,12 @@ public class PanelResultados extends JPanel {
     private JPanel createMatchCard(Partido partido) {
         JPanel card = createRoundedPanel();
         card.setLayout(new BorderLayout());
-        card.setMaximumSize(new Dimension(800, 180));
+        card.setMaximumSize(new Dimension(800, isAdmin ? 180 : 230));
 
         // HEADER
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        header.setBorder(new EmptyBorder(15, 20, 15, 20));
+        header.setBorder(new EmptyBorder(15, 20, 10, 20));
         
         JLabel lblFase = new JLabel(partido.getFase().toUpperCase());
         lblFase.setFont(new Font("Consolas", Font.PLAIN, 11));
@@ -402,9 +462,8 @@ public class PanelResultados extends JPanel {
         JLabel lblEq1 = new JLabel(partido.getEquipoLocal().getNombre(), SwingConstants.CENTER);
         lblEq1.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblEq1.setForeground(TEXT_LIGHT);
-        JLabel flag1 = new JLabel("🏳", SwingConstants.CENTER); // Bandera generica
-        flag1.setFont(new Font("Segoe UI", Font.PLAIN, 40));
-        flag1.setForeground(Color.WHITE);
+        JLabel flag1 = new JLabel("", SwingConstants.CENTER);
+        utils.FlagManager.setFlagIconAsync(flag1, partido.getEquipoLocal().getNombre(), 40, 26);
         pEq1.add(flag1, BorderLayout.CENTER);
         pEq1.add(lblEq1, BorderLayout.SOUTH);
 
@@ -415,8 +474,7 @@ public class PanelResultados extends JPanel {
         lblScore.setFont(new Font("Segoe UI", Font.PLAIN, 48));
         lblScore.setForeground(TEXT_GOLD);
         
-        // Estadio Simulado
-        String estadio = "ESTADIO SIMULADO";
+        String estadio = "ESTADIO OFICIAL";
         if(partido.getEquipoLocal().getNombre().toUpperCase().contains("MEX")) estadio = "ESTADIO AZTECA";
         else if(partido.getEquipoLocal().getNombre().toUpperCase().contains("USA")) estadio = "METLIFE STADIUM";
         else if(partido.getEquipoLocal().getNombre().toUpperCase().contains("ARG")) estadio = "SOFI STADIUM";
@@ -434,9 +492,8 @@ public class PanelResultados extends JPanel {
         JLabel lblEq2 = new JLabel(partido.getEquipoVisita().getNombre(), SwingConstants.CENTER);
         lblEq2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblEq2.setForeground(TEXT_LIGHT);
-        JLabel flag2 = new JLabel("🏳", SwingConstants.CENTER);
-        flag2.setFont(new Font("Segoe UI", Font.PLAIN, 40));
-        flag2.setForeground(Color.WHITE);
+        JLabel flag2 = new JLabel("", SwingConstants.CENTER);
+        utils.FlagManager.setFlagIconAsync(flag2, partido.getEquipoVisita().getNombre(), 40, 26);
         pEq2.add(flag2, BorderLayout.CENTER);
         pEq2.add(lblEq2, BorderLayout.SOUTH);
 
@@ -444,31 +501,102 @@ public class PanelResultados extends JPanel {
         body.add(pRes);
         body.add(pEq2);
 
-        // FOOTER
-        JPanel footer = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 10)) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                g.setColor(BORDER_CARD);
-                g.drawLine(20, 0, getWidth() - 20, 0); // Linea superior
-            }
-        };
-        footer.setOpaque(false);
-        JLabel lblEdit = new JLabel("📝 Editar Resultado");
-        lblEdit.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblEdit.setForeground(TEXT_LIGHT);
-        lblEdit.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        lblEdit.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                abrirDialogoRegistro(partido);
-            }
-        });
-        footer.add(lblEdit);
-
         card.add(header, BorderLayout.NORTH);
         card.add(body, BorderLayout.CENTER);
-        card.add(footer, BorderLayout.SOUTH);
+        
+        // FOOTER ADMIN: editar resultado
+        if (isAdmin) {
+            JPanel footer = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 10)) {
+                @Override protected void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+                    g.setColor(BORDER_CARD);
+                    g.drawLine(20, 0, getWidth() - 20, 0);
+                }
+            };
+            footer.setOpaque(false);
+            JLabel lblEdit = new JLabel(" Editar Resultado");
+            lblEdit.setIcon(FontIcon.of(FontAwesomeSolid.EDIT, 14, TEXT_LIGHT));
+            lblEdit.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            lblEdit.setForeground(TEXT_LIGHT);
+            lblEdit.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            lblEdit.addMouseListener(new MouseAdapter() {
+                @Override public void mouseClicked(MouseEvent e) { abrirDialogoRegistro(partido); }
+            });
+            footer.add(lblEdit);
+            card.add(footer, BorderLayout.SOUTH);
+        }
+
+        // FOOTER USUARIO: mostrar su predicción y si acertó
+        if (!isAdmin && apostadorSesion != null) {
+            Prediccion pred = prediccionDAO.obtenerPrediccionPorApostadorYPartido(
+                    apostadorSesion.getId(), partido.getId());
+
+            JPanel predFooter = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10)) {
+                @Override protected void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+                    g.setColor(BORDER_CARD);
+                    g.drawLine(20, 0, getWidth() - 20, 0);
+                }
+            };
+            predFooter.setOpaque(false);
+
+            if (pred == null) {
+                // No hizo predicción
+                JLabel lblNoPred = new JLabel("No realizaste una predicción para este partido");
+                lblNoPred.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+                lblNoPred.setForeground(TEXT_MUTED);
+                predFooter.add(lblNoPred);
+            } else {
+                // Mostrar predicción del usuario
+                JLabel lblPredTitle = new JLabel("Tu predicción:");
+                lblPredTitle.setFont(new Font("Segoe UI", Font.BOLD, 11));
+                lblPredTitle.setForeground(TEXT_LIGHT);
+
+                JLabel lblPredScore = new JLabel(pred.getGolesPredEq1() + " - " + pred.getGolesPredEq2());
+                lblPredScore.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                lblPredScore.setForeground(Color.WHITE);
+
+                // Calcular resultado
+                int gl = partido.getGolesLocal();
+                int gv = partido.getGolesVisita();
+                int pl = pred.getGolesPredEq1();
+                int pv = pred.getGolesPredEq2();
+
+                String badgeText;
+                Color badgeColor;
+                if (pl == gl && pv == gv) {
+                    badgeText = "+5 pts  EXACTO";
+                    badgeColor = new Color(56, 189, 107); // verde
+                } else if ((pl > pv && gl > gv) || (pl < pv && gl < gv) || (pl == pv && gl == gv)) {
+                    badgeText = "+3 pts  GANADOR";
+                    badgeColor = TEXT_GOLD;
+                } else {
+                    badgeText = "Fallaste";
+                    badgeColor = new Color(255, 107, 107); // rojo
+                }
+
+                final Color finalBadgeColor = badgeColor;
+                JLabel lblBadge = new JLabel(" " + badgeText + " ") {
+                    @Override protected void paintComponent(Graphics g) {
+                        Graphics2D g2 = (Graphics2D) g.create();
+                        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                        g2.setColor(new Color(finalBadgeColor.getRed(), finalBadgeColor.getGreen(), finalBadgeColor.getBlue(), 30));
+                        g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
+                        super.paintComponent(g);
+                        g2.dispose();
+                    }
+                };
+                lblBadge.setFont(new Font("Segoe UI", Font.BOLD, 11));
+                lblBadge.setForeground(badgeColor);
+                lblBadge.setBorder(new EmptyBorder(3, 6, 3, 6));
+                lblBadge.setOpaque(false);
+
+                predFooter.add(lblPredTitle);
+                predFooter.add(lblPredScore);
+                predFooter.add(lblBadge);
+            }
+            card.add(predFooter, BorderLayout.SOUTH);
+        }
 
         return card;
     }
@@ -564,18 +692,8 @@ public class PanelResultados extends JPanel {
         txtL.setBackground(FIELD_BG); txtL.setForeground(Color.WHITE); txtL.setCaretColor(Color.WHITE);
         txtV.setBackground(FIELD_BG); txtV.setForeground(Color.WHITE); txtV.setCaretColor(Color.WHITE);
 
-        javax.swing.text.DocumentFilter onlyNumbers = new javax.swing.text.DocumentFilter() {
-            @Override
-            public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
-                if (string != null && string.matches("[0-9]*")) super.insertString(fb, offset, string, attr);
-            }
-            @Override
-            public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
-                if (text != null && text.matches("[0-9]*")) super.replace(fb, offset, length, text, attrs);
-            }
-        };
-        ((AbstractDocument) txtL.getDocument()).setDocumentFilter(onlyNumbers);
-        ((AbstractDocument) txtV.getDocument()).setDocumentFilter(onlyNumbers);
+        ((AbstractDocument) txtL.getDocument()).setDocumentFilter(ValidationUtils.getNumbersOnlyFilter(2));
+        ((AbstractDocument) txtV.getDocument()).setDocumentFilter(ValidationUtils.getNumbersOnlyFilter(2));
 
         if(preselect != null && preselect.getGolesLocal() != null) {
             txtL.setText(String.valueOf(preselect.getGolesLocal()));

@@ -20,7 +20,9 @@ INSERT INTO usuarios (username, password, rol) VALUES ('admin', 'admin', 'admin'
 CREATE TABLE apostadores (
     id           INT AUTO_INCREMENT PRIMARY KEY,
     nombre       VARCHAR(100) NOT NULL,
-    puntos_total INT DEFAULT 0
+    puntos_total INT DEFAULT 0,
+    usuario_id   INT DEFAULT NULL,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 /* ------------------ TABLA: equipos ---------------------- */
@@ -37,7 +39,7 @@ CREATE TABLE partidos (
     id           INT AUTO_INCREMENT PRIMARY KEY,
     equipo_local_id  INT NOT NULL,
     equipo_visita_id INT NOT NULL,
-    fecha      DATE NOT NULL,
+    fecha      DATETIME NOT NULL,
     fase       VARCHAR(50) NOT NULL,
     goles_local  INT DEFAULT NULL,
     goles_visita INT DEFAULT NULL,

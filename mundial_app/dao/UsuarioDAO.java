@@ -32,16 +32,33 @@ public class UsuarioDAO {
 
     // Crear nuevo usuario
     public boolean crearUsuario(Usuario usuario) {
+        return crearUsuarioYObtenerId(usuario) > 0;
+    }
+
+    // Crear nuevo usuario y devolver su ID (o -1 si falla)
+    public int crearUsuarioYObtenerId(Usuario usuario) {
         String sql = "INSERT INTO usuarios (username, password, rol) VALUES (?,?,?)";
         try (Connection conn = ConexionBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, usuario.getUsername());
             ps.setString(2, usuario.getPassword());
             ps.setString(3, usuario.getRol());
-            return ps.executeUpdate() > 0;
+            int affectedRows = ps.executeUpdate();
+            
+            if (affectedRows == 0) {
+                return -1;
+            }
+
+            try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    return generatedKeys.getInt(1);
+                } else {
+                    return -1;
+                }
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            return false;
+            return -1;
         }
     }
 

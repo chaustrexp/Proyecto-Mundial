@@ -7,10 +7,11 @@ import modelos.Prediccion;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
+import org.kordamp.ikonli.Ikon;
+import utils.ValidationUtils;
 import javax.swing.text.AbstractDocument;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DocumentFilter;
 import java.awt.*;
 import java.awt.geom.Arc2D;
 import java.awt.geom.RoundRectangle2D;
@@ -36,6 +37,14 @@ public class PanelPredicciones extends JPanel {
     // Labels dinamicos
     private JLabel lblTotalPreds;
     private JLabel lblVolumen;
+
+    private JPanel statsContainer;
+    private JPanel bottomContainer;
+
+    // Feed en tiempo real
+    private JPanel recentFeedPanel;
+    private JPanel proximosPanel;
+    private javax.swing.Timer refreshTimer;
 
     public PanelPredicciones(boolean isAdmin) {
         controller = new PrediccionController();
@@ -85,9 +94,26 @@ public class PanelPredicciones extends JPanel {
         JPanel rightBtnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         rightBtnPanel.setOpaque(false);
         if (!isAdmin) {
+            JButton btnMisPred = createDarkButton("Mis Predicciones");
+            btnMisPred.setPreferredSize(new Dimension(150, 32));
+            btnMisPred.addActionListener(e -> abrirDialogoMisPredicciones());
+            rightBtnPanel.add(btnMisPred);
+
             JButton btnNewPred = createGoldButton("➕ Nueva Predicción");
             btnNewPred.addActionListener(e -> abrirDialogoRegistro());
             rightBtnPanel.add(btnNewPred);
+        } else {
+            JButton btnRefresh = createDarkButton("🔄 Actualizar Datos");
+            btnRefresh.setPreferredSize(new Dimension(150, 32));
+            btnRefresh.addActionListener(e -> {
+                refreshFeed();
+                refreshProximos();
+                btnRefresh.setText("✔ Actualizado");
+                Timer t = new Timer(1500, evt -> btnRefresh.setText("🔄 Actualizar Datos"));
+                t.setRepeats(false);
+                t.start();
+            });
+            rightBtnPanel.add(btnRefresh);
         }
         
         filtersPanel.add(leftFilters, BorderLayout.WEST);
@@ -97,66 +123,126 @@ public class PanelPredicciones extends JPanel {
         contentPanel.add(Box.createVerticalStrut(20));
 
         // 2. TARJETAS ESTADÍSTICAS (Distribución: Columnas directas en contentPanel)
-        JPanel statsContainer = new JPanel(new GridLayout(1, 3, 15, 0));
+        statsContainer = new JPanel(new GridLayout(1, 3, 15, 0));
         statsContainer.setOpaque(false);
         statsContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 110));
 
         lblTotalPreds = new JLabel("0");
         lblTotalPreds.setFont(new Font("Segoe UI", Font.BOLD, 26));
         lblTotalPreds.setForeground(Color.WHITE);
-        statsContainer.add(createStatCard("Predicciones Totales", "📈", lblTotalPreds, "Acumulado desde el inicio del torneo", TEXT_GOLD));
+        statsContainer.add(createStatCard("Predicciones Totales", FontAwesomeSolid.CHART_LINE, lblTotalPreds, "Acumulado desde el inicio del torneo", TEXT_GOLD));
 
         lblVolumen = new JLabel("$0");
         lblVolumen.setFont(new Font("Segoe UI", Font.BOLD, 26));
         lblVolumen.setForeground(Color.WHITE);
-        statsContainer.add(createStatCard("Volumen Real (Predicciones)", "💵", lblVolumen, "Valor total acumulado en predicciones reales", TEXT_CYAN));
+        statsContainer.add(createStatCard("Volumen Real (Predicciones)", FontAwesomeSolid.MONEY_BILL_WAVE, lblVolumen, "Valor total acumulado en predicciones reales", TEXT_CYAN));
 
         JLabel lblTendencia = new JLabel("—");
         lblTendencia.setFont(new Font("Segoe UI", Font.BOLD, 22));
         lblTendencia.setForeground(TEXT_GOLD);
-        statsContainer.add(createStatCard("Tendencia Global", "↗", lblTendencia, "Equipo con mayor cantidad de apoyo", TEXT_LIGHT));
+        statsContainer.add(createStatCard("Tendencia Global", FontAwesomeSolid.ARROW_UP, lblTendencia, "Equipo con mayor cantidad de apoyo", TEXT_LIGHT));
 
         contentPanel.add(statsContainer);
         contentPanel.add(Box.createVerticalStrut(25));
 
-        // 3. PRÓXIMOS ENCUENTROS
+        // 3. FEED DE PREDICCIONES RECIENTES (Tiempo Real)
+        JPanel feedHeader = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
+        feedHeader.setOpaque(false);
+        feedHeader.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+
+        JLabel lblFeedTitle = new JLabel("Actividad Reciente");
+        lblFeedTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblFeedTitle.setForeground(Color.WHITE);
+
+        JPanel liveDot = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 10)) {
+            private int alpha = 255;
+            private boolean dir = false;
+            {
+                javax.swing.Timer blink = new javax.swing.Timer(600, e -> {
+                    alpha = dir ? alpha + 40 : alpha - 40;
+                    if (alpha <= 80) dir = true;
+                    if (alpha >= 255) dir = false;
+                    repaint();
+                });
+                blink.start();
+            }
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(56, 189, 107, alpha));
+                g2.fillOval(4, getHeight()/2 - 5, 10, 10);
+                g2.dispose();
+            }
+        };
+        liveDot.setOpaque(false);
+        liveDot.setPreferredSize(new Dimension(80, 28));
+
+        JLabel lblLive = new JLabel("EN VIVO");
+        lblLive.setFont(new Font("Consolas", Font.BOLD, 10));
+        lblLive.setForeground(new Color(56, 189, 107));
+        liveDot.add(lblLive);
+
+        feedHeader.add(lblFeedTitle);
+        feedHeader.add(liveDot);
+        contentPanel.add(feedHeader);
+        contentPanel.add(Box.createVerticalStrut(10));
+
+        // Panel contenedor del feed envuelto en un wrapper centrado
+        JPanel feedWrapper = new JPanel();
+        feedWrapper.setLayout(new BoxLayout(feedWrapper, BoxLayout.Y_AXIS));
+        feedWrapper.setOpaque(false);
+        feedWrapper.setAlignmentX(Component.CENTER_ALIGNMENT);
+        feedWrapper.setMaximumSize(new Dimension(800, Integer.MAX_VALUE));
+
+        recentFeedPanel = new JPanel();
+        recentFeedPanel.setLayout(new BoxLayout(recentFeedPanel, BoxLayout.Y_AXIS));
+        recentFeedPanel.setOpaque(false);
+        recentFeedPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        feedWrapper.add(recentFeedPanel);
+        contentPanel.add(feedWrapper);
+        contentPanel.add(Box.createVerticalStrut(25));
+
+        // Cargar feed inicial
+        refreshFeed();
+
+        // Timer: refrescar el feed cada 10 segundos
+        refreshTimer = new javax.swing.Timer(10000, e -> {
+            refreshFeed();
+            refreshProximos();
+        });
+        refreshTimer.start();
+
+        // Detener timer al salir del componente
+        addAncestorListener(new javax.swing.event.AncestorListener() {
+            @Override public void ancestorRemoved(javax.swing.event.AncestorEvent e) { refreshTimer.stop(); }
+            @Override public void ancestorAdded(javax.swing.event.AncestorEvent e) { refreshTimer.start(); }
+            @Override public void ancestorMoved(javax.swing.event.AncestorEvent e) {}
+        });
+
+        // 4. PRÓXIMOS ENCUENTROS - contenedor dinámico
         JPanel matchesHeader = new JPanel(new BorderLayout());
         matchesHeader.setOpaque(false);
         matchesHeader.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        JLabel lblSub = new JLabel("Próximos Encuentros (Mismo Grupo)");
+        JLabel lblSub = new JLabel("Próximos Encuentros — Todos los Grupos");
         lblSub.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblSub.setForeground(Color.WHITE);
-        JLabel lblVerTodos = new JLabel("Ver todos");
-        lblVerTodos.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lblVerTodos.setForeground(TEXT_GOLD);
         matchesHeader.add(lblSub, BorderLayout.WEST);
-        matchesHeader.add(lblVerTodos, BorderLayout.EAST);
         contentPanel.add(matchesHeader);
         contentPanel.add(Box.createVerticalStrut(10));
 
-        // Obtener encuentros reales desde la base de datos que pertenezcan al mismo grupo
-        List<Partido> partidosReal = controller.obtenerPartidos();
-        int matchesRendered = 0;
-        for (Partido p : partidosReal) {
-            if (p.getGolesLocal() == null && matchesRendered < 2) {
-                // Verificar que ambos equipos pertenezcan al mismo grupo
-                if (p.getEquipoLocal().getGrupo().equalsIgnoreCase(p.getEquipoVisita().getGrupo())) {
-                    contentPanel.add(createMatchCard(p.getEquipoLocal().getNombre(), p.getEquipoVisita().getNombre(), "21:00", 45, 20, 35, "12.4k Predictores", "$2.1M Total"));
-                    contentPanel.add(Box.createVerticalStrut(15));
-                    matchesRendered++;
-                }
-            }
-        }
-        if (matchesRendered == 0) {
-            contentPanel.add(createMatchCard("México", "Chequia", "20:00", 42, 18, 40, "12.4k Predictores", "$2.1M Total"));
-            contentPanel.add(Box.createVerticalStrut(15));
-            contentPanel.add(createMatchCard("Brasil", "Haití", "22:30", 65, 10, 25, "45.8k Predictores", "$8.4M Total"));
-            contentPanel.add(Box.createVerticalStrut(15));
-        }
+        proximosPanel = new JPanel();
+        proximosPanel.setLayout(new BoxLayout(proximosPanel, BoxLayout.Y_AXIS));
+        proximosPanel.setOpaque(false);
+        contentPanel.add(proximosPanel);
         contentPanel.add(Box.createVerticalStrut(10));
 
+        // Carga inicial
+        refreshProximos();
+
         // 4. TOP PREDICTORES Y EFICIENCIA
-        JPanel bottomContainer = new JPanel(new GridLayout(1, 2, 20, 0));
+        bottomContainer = new JPanel(new GridLayout(1, 2, 20, 0));
         bottomContainer.setOpaque(false);
         bottomContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
         
@@ -184,21 +270,38 @@ public class PanelPredicciones extends JPanel {
         add(footer, BorderLayout.SOUTH);
 
         actualizarDatosReales(lblTendencia);
+
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                int width = getWidth();
+                if (width < 750) {
+                    statsContainer.setLayout(new GridLayout(3, 1, 0, 15));
+                    statsContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 350));
+                    bottomContainer.setLayout(new GridLayout(2, 1, 0, 20));
+                    bottomContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 600));
+                } else {
+                    statsContainer.setLayout(new GridLayout(1, 3, 15, 0));
+                    statsContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 110));
+                    bottomContainer.setLayout(new GridLayout(1, 2, 20, 0));
+                    bottomContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
+                }
+                statsContainer.revalidate();
+                bottomContainer.revalidate();
+            }
+        });
     }
 
     private void actualizarDatosReales(JLabel lblTendencia) {
         List<Prediccion> preds = controller.obtenerPredicciones();
         lblTotalPreds.setText(String.format("%,d", preds.size()));
         
-        // Volumen real acumulado en base a predicciones (ej. 1500 por cada predicción en BD)
         int volReal = preds.size() * 1500;
         lblVolumen.setText(String.format("$%,d", volReal));
 
-        // Obtener el equipo de mayor tendencia (el más apoyado en predicciones)
         if (!preds.isEmpty()) {
             java.util.Map<String, Integer> conteoEquipos = new java.util.HashMap<>();
             for (Prediccion p : preds) {
-                // Si predice ganar local o visitante
                 String apoyado = null;
                 if (p.getGolesPredEq1() > p.getGolesPredEq2()) {
                     apoyado = p.getPartido().getEquipoLocal().getNombre();
@@ -223,6 +326,174 @@ public class PanelPredicciones extends JPanel {
         }
     }
 
+    /** Refresca el feed de actividad reciente en tiempo real */
+    private void refreshFeed() {
+        List<Prediccion> preds = controller.obtenerTodasPredicciones();
+        recentFeedPanel.removeAll();
+
+        if (preds.isEmpty()) {
+            JLabel empty = new JLabel("Aún no hay predicciones registradas en el sistema.");
+            empty.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+            empty.setForeground(TEXT_MUTED);
+            empty.setAlignmentX(Component.CENTER_ALIGNMENT);
+            recentFeedPanel.add(empty);
+        } else {
+            // Mostrar las 8 más recientes
+            int limit = Math.min(preds.size(), 8);
+            for (int i = 0; i < limit; i++) {
+                Prediccion pred = preds.get(i);
+                recentFeedPanel.add(createFeedRow(pred, i));
+                if (i < limit - 1) recentFeedPanel.add(Box.createVerticalStrut(6));
+            }
+        }
+
+        // Actualizar contadores de estadísticas
+        lblTotalPreds.setText(String.format("%,d", preds.size()));
+        int volReal = preds.size() * 1500;
+        lblVolumen.setText(String.format("$%,d", volReal));
+
+        recentFeedPanel.revalidate();
+        recentFeedPanel.repaint();
+    }
+
+    /** Refresca la sección de Próximos Encuentros en tiempo real */
+    private void refreshProximos() {
+        proximosPanel.removeAll();
+
+        List<Partido> partidos = controller.obtenerPartidos();
+        List<Prediccion> todasPreds = controller.obtenerTodasPredicciones();
+        int rendered = 0;
+
+        for (Partido p : partidos) {
+            if (p.getGolesLocal() == null) {
+                // Filtrar predicciones de este partido
+                List<Prediccion> predsPart = todasPreds.stream()
+                        .filter(pr -> pr.getPartido().getId() == p.getId())
+                        .collect(java.util.stream.Collectors.toList());
+                int total = predsPart.size();
+                int locPct, empPct, visPct;
+                if (total > 0) {
+                    long loc = predsPart.stream().filter(pr -> pr.getGolesPredEq1() > pr.getGolesPredEq2()).count();
+                    long emp = predsPart.stream().filter(pr -> pr.getGolesPredEq1() == pr.getGolesPredEq2()).count();
+                    long vis = predsPart.stream().filter(pr -> pr.getGolesPredEq1() < pr.getGolesPredEq2()).count();
+                    locPct = (int)(loc * 100 / total);
+                    empPct = (int)(emp * 100 / total);
+                    visPct = (int)(vis * 100 / total);
+                } else {
+                    locPct = 33; empPct = 33; visPct = 34;
+                }
+                String horaStr = p.getFecha() != null
+                        ? p.getFecha().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm dd/MM"))
+                        : "--:--";
+                String predStr = total + (total == 1 ? " Predictor" : " Predictores");
+                String grupoStr = "Grupo " + p.getEquipoLocal().getGrupo();
+                proximosPanel.add(createMatchCard(
+                        p.getEquipoLocal().getNombre(),
+                        p.getEquipoVisita().getNombre(),
+                        horaStr, locPct, empPct, visPct,
+                        predStr, grupoStr));
+                proximosPanel.add(Box.createVerticalStrut(15));
+                rendered++;
+            }
+        }
+
+        if (rendered == 0) {
+            JLabel lblNo = new JLabel("No hay partidos próximos programados.");
+            lblNo.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+            lblNo.setForeground(TEXT_MUTED);
+            lblNo.setAlignmentX(Component.CENTER_ALIGNMENT);
+            proximosPanel.add(lblNo);
+            proximosPanel.add(Box.createVerticalStrut(15));
+        }
+
+        proximosPanel.revalidate();
+        proximosPanel.repaint();
+    }
+
+    private JPanel createFeedRow(Prediccion pred, int index) {
+        JPanel row = new JPanel(new BorderLayout(10, 0)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(BG_CARD);
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 10, 10));
+                // Borde izquierdo de color (accent)
+                g2.setColor(index % 2 == 0 ? TEXT_GOLD : TEXT_CYAN);
+                g2.fillRoundRect(0, 6, 3, getHeight() - 12, 3, 3);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        row.setOpaque(false);
+        row.setBorder(new EmptyBorder(10, 16, 10, 16));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 56));
+        row.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        // Avatar inicial
+        String nombre = pred.getApostador().getNombre();
+        String inicial = nombre.isEmpty() ? "?" : nombre.substring(0, 1).toUpperCase();
+        JLabel avatar = new JLabel(inicial, SwingConstants.CENTER) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(FIELD_BORDER);
+                g2.fillOval(0, 0, getWidth(), getHeight());
+                super.paintComponent(g);
+                g2.dispose();
+            }
+        };
+        avatar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        avatar.setForeground(Color.WHITE);
+        avatar.setPreferredSize(new Dimension(34, 34));
+        avatar.setOpaque(false);
+
+        // Info central
+        JPanel info = new JPanel();
+        info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+        info.setOpaque(false);
+
+        String matchStr = pred.getPartido().getEquipoLocal().getNombre()
+                + " vs " + pred.getPartido().getEquipoVisita().getNombre();
+        JLabel lblMatch = new JLabel(nombre + "  →  " + matchStr);
+        lblMatch.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblMatch.setForeground(Color.WHITE);
+
+        JLabel lblSub = new JLabel("predijo: " + pred.getGolesPredEq1() + " - " + pred.getGolesPredEq2());
+        lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        lblSub.setForeground(TEXT_MUTED);
+
+        info.add(lblMatch);
+        info.add(Box.createVerticalStrut(2));
+        info.add(lblSub);
+
+        // Badge marcador predicho
+        JLabel scoreTag = new JLabel(pred.getGolesPredEq1() + "-" + pred.getGolesPredEq2(), SwingConstants.CENTER) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color c = index % 2 == 0 ? TEXT_GOLD : TEXT_CYAN;
+                g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 25));
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
+                super.paintComponent(g);
+                g2.dispose();
+            }
+        };
+        scoreTag.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        scoreTag.setForeground(index % 2 == 0 ? TEXT_GOLD : TEXT_CYAN);
+        scoreTag.setPreferredSize(new Dimension(50, 34));
+        scoreTag.setOpaque(false);
+
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        left.setOpaque(false);
+        left.add(avatar);
+        left.add(info);
+
+        row.add(left, BorderLayout.CENTER);
+        row.add(scoreTag, BorderLayout.EAST);
+        return row;
+    }
+
     // --- CREADORES DE COMPONENTES VISUALES ---
 
     private JPanel createRoundedPanel() {
@@ -244,16 +515,15 @@ public class PanelPredicciones extends JPanel {
         return p;
     }
 
-    private JPanel createStatCard(String title, String icon, JLabel mainValue, String subText, Color titleColor) {
+    private JPanel createStatCard(String title, Ikon icon, JLabel mainValue, String subText, Color titleColor) {
         JPanel card = createRoundedPanel();
         card.setLayout(new BorderLayout());
         card.setBorder(new EmptyBorder(15, 20, 15, 20));
 
         JPanel topP = new JPanel(new BorderLayout());
         topP.setOpaque(false);
-        JLabel lblIcon = new JLabel(icon);
-        lblIcon.setForeground(titleColor);
-        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
+        FontIcon fIcon = FontIcon.of(icon, 16, titleColor);
+        JLabel lblIcon = new JLabel(fIcon);
         JLabel lblTitle = new JLabel(title);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lblTitle.setForeground(TEXT_MUTED);
@@ -344,9 +614,13 @@ public class PanelPredicciones extends JPanel {
         // Nombres y VS
         JPanel topP = new JPanel(new GridLayout(1, 3));
         topP.setOpaque(false);
-        JLabel l1 = new JLabel("🏳 " + eq1, SwingConstants.CENTER); l1.setForeground(Color.WHITE); l1.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        JLabel l1 = new JLabel(eq1, SwingConstants.CENTER); l1.setForeground(Color.WHITE); l1.setFont(new Font("Segoe UI", Font.BOLD, 16));
         JLabel lvs = new JLabel(time, SwingConstants.CENTER); lvs.setForeground(TEXT_MUTED); lvs.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        JLabel l2 = new JLabel("🏳 " + eq2, SwingConstants.CENTER); l2.setForeground(Color.WHITE); l2.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        JLabel l2 = new JLabel(eq2, SwingConstants.CENTER); l2.setForeground(Color.WHITE); l2.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        
+        utils.FlagManager.setFlagIconAsync(l1, eq1, 24, 16);
+        utils.FlagManager.setFlagIconAsync(l2, eq2, 24, 16);
+        
         topP.add(l1); topP.add(lvs); topP.add(l2);
 
         // Progress Bar Labels
@@ -582,12 +856,10 @@ public class PanelPredicciones extends JPanel {
         p.setBackground(BG_CARD);
         p.setBorder(new EmptyBorder(15, 15, 15, 15));
         
-        List<Apostador> apostadores = controller.obtenerApostadores();
-        if (apostadores.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "⚠ No hay apostadores registrados. Registre uno primero.", "Error", JOptionPane.ERROR_MESSAGE);
+        if (utils.SesionUsuario.getApostadorActual() == null) {
+            JOptionPane.showMessageDialog(this, "⚠ Su cuenta no tiene un perfil de apostador vinculado o hubo un error.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        Apostador defaultApo = apostadores.get(0);
         
         JComboBox<Partido> cbPar = new JComboBox<>();
         for(Partido par : controller.obtenerPartidos()) cbPar.addItem(par);
@@ -598,18 +870,8 @@ public class PanelPredicciones extends JPanel {
         txtL.setBackground(FIELD_BG); txtL.setForeground(Color.WHITE); txtL.setCaretColor(Color.WHITE);
         txtV.setBackground(FIELD_BG); txtV.setForeground(Color.WHITE); txtV.setCaretColor(Color.WHITE);
 
-        javax.swing.text.DocumentFilter onlyNumbers = new javax.swing.text.DocumentFilter() {
-            @Override
-            public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
-                if (string != null && string.matches("[0-9]*")) super.insertString(fb, offset, string, attr);
-            }
-            @Override
-            public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
-                if (text != null && text.matches("[0-9]*")) super.replace(fb, offset, length, text, attrs);
-            }
-        };
-        ((AbstractDocument) txtL.getDocument()).setDocumentFilter(onlyNumbers);
-        ((AbstractDocument) txtV.getDocument()).setDocumentFilter(onlyNumbers);
+        ((AbstractDocument) txtL.getDocument()).setDocumentFilter(ValidationUtils.getNumbersOnlyFilter(2));
+        ((AbstractDocument) txtV.getDocument()).setDocumentFilter(ValidationUtils.getNumbersOnlyFilter(2));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(8, 8, 8, 8); gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -619,23 +881,161 @@ public class PanelPredicciones extends JPanel {
         JLabel l4 = new JLabel("Goles Visita:"); l4.setForeground(Color.WHITE);
 
         gbc.gridx=0; gbc.gridy=0; p.add(l2, gbc); gbc.gridx=1; p.add(cbPar, gbc);
-        gbc.gridx=0; gbc.gridy=1; p.add(l3, gbc); gbc.gridx=1; p.add(txtL, gbc);
-        gbc.gridx=0; gbc.gridy=2; p.add(l4, gbc); gbc.gridx=1; p.add(txtV, gbc);
+        
+        JLabel lblLockInfo = new JLabel();
+        lblLockInfo.setForeground(TEXT_GOLD);
+        lblLockInfo.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        gbc.gridx=1; gbc.gridy=1; p.add(lblLockInfo, gbc);
+
+        gbc.gridx=0; gbc.gridy=2; p.add(l3, gbc); gbc.gridx=1; p.add(txtL, gbc);
+        gbc.gridx=0; gbc.gridy=3; p.add(l4, gbc); gbc.gridx=1; p.add(txtV, gbc);
 
         JButton btnGuardar = createGoldButton("Guardar Predicción");
+
+        cbPar.addActionListener(e -> {
+            Partido pSel = (Partido) cbPar.getSelectedItem();
+            if (pSel != null) {
+                if (pSel.isLocked()) {
+                    lblLockInfo.setText("🔒 Bloqueado (en curso o terminado)");
+                    lblLockInfo.setForeground(Color.RED);
+                    btnGuardar.setEnabled(false);
+                } else {
+                    lblLockInfo.setText("✅ Abierto para apuestas");
+                    lblLockInfo.setForeground(new Color(0, 200, 0));
+                    btnGuardar.setEnabled(true);
+                }
+            }
+        });
+        if (cbPar.getItemCount() > 0) cbPar.setSelectedIndex(0);
+
         btnGuardar.addActionListener(e -> {
-            if(controller.registrarPrediccion(defaultApo, (Partido)cbPar.getSelectedItem(), txtL.getText(), txtV.getText())) {
+            if(controller.registrarPrediccion((Partido)cbPar.getSelectedItem(), txtL.getText(), txtV.getText())) {
                 JOptionPane.showMessageDialog(dialog, "Predicción guardada exitosamente.");
-                actualizarDatosReales(new JLabel());
+                refreshFeed();
+                refreshProximos();
                 dialog.dispose();
             } else {
                 JOptionPane.showMessageDialog(dialog, controller.getUltimoError(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
-        gbc.gridx=0; gbc.gridy=3; gbc.gridwidth=2; gbc.insets = new Insets(15, 5, 5, 5);
+        gbc.gridx=0; gbc.gridy=4; gbc.gridwidth=2; gbc.insets = new Insets(15, 5, 5, 5);
         p.add(btnGuardar, gbc);
 
+        dialog.setContentPane(p);
+        dialog.setVisible(true);
+    }
+
+    private void abrirDialogoMisPredicciones() {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Mis Predicciones", true);
+        dialog.setSize(500, 400);
+        dialog.setLocationRelativeTo(this);
+
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(BG_CARD);
+        p.setBorder(new EmptyBorder(15, 15, 15, 15));
+
+        JLabel title = new JLabel("Mis Predicciones");
+        title.setForeground(TEXT_GOLD);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        p.add(title, BorderLayout.NORTH);
+
+        JPanel list = new JPanel();
+        list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
+        list.setBackground(BG_CARD);
+
+        List<Prediccion> misPreds = controller.obtenerPredicciones(); // Filtered by Apostador ID in controller
+        for (Prediccion pred : misPreds) {
+            JPanel row = new JPanel(new BorderLayout());
+            row.setOpaque(false);
+            row.setBorder(new EmptyBorder(10, 5, 10, 5));
+
+            String matchText = pred.getPartido().getEquipoLocal().getNombre() + " vs " + pred.getPartido().getEquipoVisita().getNombre();
+            String scoreText = pred.getGolesPredEq1() + " - " + pred.getGolesPredEq2();
+            JLabel lblMatch = new JLabel(matchText);
+            lblMatch.setForeground(Color.WHITE);
+            JLabel lblScore = new JLabel(scoreText);
+            lblScore.setForeground(TEXT_CYAN);
+            lblScore.setFont(new Font("Segoe UI", Font.BOLD, 14));
+
+            JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT)); left.setOpaque(false);
+            left.add(lblMatch); left.add(Box.createHorizontalStrut(10)); left.add(lblScore);
+
+            JButton btnEdit = createDarkButton("Editar");
+            btnEdit.setPreferredSize(new Dimension(80, 25));
+            if (pred.getPartido().isLocked()) {
+                btnEdit.setEnabled(false);
+                btnEdit.setText("Bloqueado");
+            } else {
+                btnEdit.addActionListener(e -> abrirDialogoEditarPrediccion(pred, dialog));
+            }
+
+            row.add(left, BorderLayout.CENTER);
+            row.add(btnEdit, BorderLayout.EAST);
+            
+            // Separador
+            row.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_CARD));
+            list.add(row);
+        }
+
+        if (misPreds.isEmpty()) {
+            JLabel empty = new JLabel("No tienes predicciones registradas.");
+            empty.setForeground(TEXT_MUTED);
+            list.add(empty);
+        }
+
+        JScrollPane scroll = new JScrollPane(list);
+        scroll.setBorder(BorderFactory.createLineBorder(BORDER_CARD));
+        scroll.getViewport().setBackground(BG_CARD);
+        p.add(scroll, BorderLayout.CENTER);
+
+        dialog.setContentPane(p);
+        dialog.setVisible(true);
+    }
+
+    private void abrirDialogoEditarPrediccion(Prediccion pred, JDialog parentDialog) {
+        JDialog dialog = new JDialog(parentDialog, "Editar Predicción", true);
+        dialog.setSize(300, 200);
+        dialog.setLocationRelativeTo(parentDialog);
+
+        JPanel p = new JPanel(new GridBagLayout());
+        p.setBackground(BG_CARD);
+        p.setBorder(new EmptyBorder(15, 15, 15, 15));
+
+        JTextField txtL = new JTextField(String.valueOf(pred.getGolesPredEq1()), 3);
+        JTextField txtV = new JTextField(String.valueOf(pred.getGolesPredEq2()), 3);
+        txtL.setBackground(FIELD_BG); txtL.setForeground(Color.WHITE); txtL.setCaretColor(Color.WHITE);
+        txtV.setBackground(FIELD_BG); txtV.setForeground(Color.WHITE); txtV.setCaretColor(Color.WHITE);
+
+        ((AbstractDocument) txtL.getDocument()).setDocumentFilter(ValidationUtils.getNumbersOnlyFilter(2));
+        ((AbstractDocument) txtV.getDocument()).setDocumentFilter(ValidationUtils.getNumbersOnlyFilter(2));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 8, 8, 8); gbc.fill = GridBagConstraints.HORIZONTAL;
+        
+        JLabel lMatch = new JLabel(pred.getPartido().getEquipoLocal().getNombre() + " vs " + pred.getPartido().getEquipoVisita().getNombre());
+        lMatch.setForeground(TEXT_GOLD);
+        gbc.gridx=0; gbc.gridy=0; gbc.gridwidth=2; p.add(lMatch, gbc);
+
+        gbc.gridwidth=1;
+        gbc.gridx=0; gbc.gridy=1; p.add(new JLabel("Goles Local:") {{setForeground(Color.WHITE);}}, gbc);
+        gbc.gridx=1; p.add(txtL, gbc);
+        gbc.gridx=0; gbc.gridy=2; p.add(new JLabel("Goles Visita:") {{setForeground(Color.WHITE);}}, gbc);
+        gbc.gridx=1; p.add(txtV, gbc);
+
+        JButton btnGuardar = createGoldButton("Actualizar");
+        btnGuardar.addActionListener(e -> {
+            if (controller.modificarPrediccion(pred, txtL.getText(), txtV.getText())) {
+                JOptionPane.showMessageDialog(dialog, "Predicción actualizada exitosamente.");
+                dialog.dispose();
+                parentDialog.dispose(); // Cierra y requiere volver a abrir para refrescar, o podría refrescar dinámico
+                abrirDialogoMisPredicciones();
+            } else {
+                JOptionPane.showMessageDialog(dialog, controller.getUltimoError(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        gbc.gridx=0; gbc.gridy=3; gbc.gridwidth=2; p.add(btnGuardar, gbc);
         dialog.setContentPane(p);
         dialog.setVisible(true);
     }

@@ -3,6 +3,9 @@ package vistas;
 import modelos.Usuario;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
+import org.kordamp.ikonli.Ikon;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
@@ -29,7 +32,7 @@ public class VentanaPrincipal extends JFrame {
     public VentanaPrincipal(Usuario usuarioActual) {
         setTitle("World Cup Trophy Elite 2026 — " + usuarioActual.getUsername());
         setSize(1100, 720);
-        setMinimumSize(new Dimension(900, 600));
+        setMinimumSize(new Dimension(750, 550));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -59,8 +62,8 @@ public class VentanaPrincipal extends JFrame {
         topLeft.setOpaque(false);
         topLeft.setBorder(new EmptyBorder(12, 0, 0, 0));
 
-        JLabel lblLogo = new JLabel("🏆");
-        lblLogo.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 28));
+        FontIcon logoIcon = FontIcon.of(FontAwesomeSolid.TROPHY, 28, TEXT_GOLD);
+        JLabel lblLogo = new JLabel(logoIcon);
 
         JLabel lblAppName = new JLabel("MUNDIAL 2026");
         lblAppName.setFont(new Font("Segoe UI", Font.BOLD, 18));
@@ -108,8 +111,8 @@ public class VentanaPrincipal extends JFrame {
         lblRoleBadge.setOpaque(false);
         lblRoleBadge.setBorder(new EmptyBorder(3, 8, 3, 8));
 
-        JLabel lblUserIcon = new JLabel("👤");
-        lblUserIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
+        FontIcon userIcon = FontIcon.of(FontAwesomeSolid.USER_CIRCLE, 20, TEXT_LIGHT);
+        JLabel lblUserIcon = new JLabel(userIcon);
 
         JLabel lblUsername = new JLabel(usuarioActual.getUsername());
         lblUsername.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -161,7 +164,7 @@ public class VentanaPrincipal extends JFrame {
         mainContainer.setOpaque(false);
 
         // Barra de Pestañas Personalizada (Navigation Bar)
-        JPanel navBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0)) {
+        JPanel navBar = new JPanel(new GridLayout(1, 0, 8, 0)) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -185,14 +188,11 @@ public class VentanaPrincipal extends JFrame {
         navButtons = new ArrayList<>();
 
         // Registrar Paneles
-        agregarPestaña(navBar, "  👥  Apostadores  ", "Apostadores", new PanelApostadores(isAdmin));
-        agregarPestaña(navBar, "  🔮  Predicciones  ", "Predicciones", new PanelPredicciones(isAdmin));
-        agregarPestaña(navBar, "  🏆  Resultados  ", "Resultados", new PanelResultados());
-
-        if (isAdmin) {
-            agregarPestaña(navBar, "  🛡️  Equipos  ", "Equipos", new PanelEquipos());
-            agregarPestaña(navBar, "  ⚽  Partidos  ", "Partidos", new PanelPartidos());
-        }
+        agregarPestaña(navBar, "Apostadores", "Apostadores", new PanelApostadores(isAdmin), FontAwesomeSolid.USERS);
+        agregarPestaña(navBar, "Predicciones", "Predicciones", new PanelPredicciones(isAdmin), FontAwesomeSolid.CHART_LINE);
+        agregarPestaña(navBar, "Partidos", "Partidos", new PanelPartidos(isAdmin), FontAwesomeSolid.FUTBOL);
+        agregarPestaña(navBar, "Equipos", "Equipos", new PanelEquipos(isAdmin), FontAwesomeSolid.SHIELD_ALT);
+        agregarPestaña(navBar, "Resultados", "Resultados", new PanelResultados(isAdmin), FontAwesomeSolid.TROPHY);
 
         // Seleccionar la primera pestaña por defecto
         if (!navButtons.isEmpty()) {
@@ -235,9 +235,9 @@ public class VentanaPrincipal extends JFrame {
         setContentPane(root);
     }
 
-    private void agregarPestaña(JPanel navBar, String title, String cardName, JPanel panel) {
+    private void agregarPestaña(JPanel navBar, String title, String cardName, JPanel panel, Ikon ikon) {
         centralPanel.add(panel, cardName);
-        NavButton btn = new NavButton(title, cardName);
+        NavButton btn = new NavButton(title, cardName, ikon);
         btn.addActionListener(e -> seleccionarPestaña(btn));
         navButtons.add(btn);
         navBar.add(btn);
@@ -256,28 +256,35 @@ public class VentanaPrincipal extends JFrame {
         private final String cardName;
         private boolean isActive = false;
 
-        public NavButton(String text, String cardName) {
+        public NavButton(String text, String cardName, Ikon ikon) {
             super(text);
             this.cardName = cardName;
-            setFont(new Font("Segoe UI", Font.BOLD, 15));
+            
+            FontIcon fIcon = FontIcon.of(ikon, 16, TEXT_LIGHT);
+            setIcon(fIcon);
+            setIconTextGap(8);
+
+            setFont(new Font("Segoe UI", Font.BOLD, 13));
             setForeground(TEXT_LIGHT);
             setContentAreaFilled(false);
             setBorderPainted(false);
             setFocusPainted(false);
             setCursor(new Cursor(Cursor.HAND_CURSOR));
-            setPreferredSize(new Dimension(190, 48));
+            setPreferredSize(new Dimension(0, 48));
 
             addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseEntered(MouseEvent e) {
                     if (!isActive) {
                         setForeground(Color.WHITE);
+                        fIcon.setIconColor(Color.WHITE);
                     }
                 }
                 @Override
                 public void mouseExited(MouseEvent e) {
                     if (!isActive) {
                         setForeground(TEXT_LIGHT);
+                        fIcon.setIconColor(TEXT_LIGHT);
                     }
                 }
             });
@@ -289,7 +296,11 @@ public class VentanaPrincipal extends JFrame {
 
         public void setActive(boolean active) {
             this.isActive = active;
-            setForeground(active ? TEXT_GOLD : TEXT_LIGHT);
+            Color c = active ? TEXT_GOLD : TEXT_LIGHT;
+            setForeground(c);
+            if (getIcon() instanceof FontIcon) {
+                ((FontIcon) getIcon()).setIconColor(c);
+            }
         }
 
         @Override
@@ -310,14 +321,10 @@ public class VentanaPrincipal extends JFrame {
                 g2.fillRect(0, 0, getWidth(), getHeight());
             }
 
-            // Pintar texto
-            FontMetrics fm = g2.getFontMetrics(getFont());
-            int textX = (getWidth() - fm.stringWidth(getText())) / 2;
-            int textY = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-            g2.setColor(getForeground());
-            g2.drawString(getText(), textX, textY);
-
+            // En vez de pintar el texto a mano, delegamos en JButton
+            // para que maneje el icono y el texto centrados
             g2.dispose();
+            super.paintComponent(g);
         }
     }
 }

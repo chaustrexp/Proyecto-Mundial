@@ -6,12 +6,19 @@ import modelos.Partido;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
+import org.kordamp.ikonli.Ikon;
+import utils.ValidationUtils;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.List;
 
@@ -33,6 +40,7 @@ public class PanelPartidos extends JPanel {
     private JPanel listContainer;
     private JTextField txtSearch;
     private JComboBox<String> cbStateFilter;
+    private JPanel statsPanel;
 
     // Etiquetas de estadísticas superiores
     private JLabel lblTotalScheduled;
@@ -51,7 +59,7 @@ public class PanelPartidos extends JPanel {
     private static final Map<Integer, String> horariosPartidos = new HashMap<>();
     private static final Map<Integer, String> estadiosPartidos = new HashMap<>();
 
-    public PanelPartidos() {
+    public PanelPartidos(boolean isAdmin) {
         controller = new PartidoController();
         setLayout(new BorderLayout());
         setBackground(BG_APP);
@@ -68,12 +76,12 @@ public class PanelPartidos extends JPanel {
         headerPanel.setOpaque(false);
         headerPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel lblSub = new JLabel("PANEL DE ADMINISTRACIÓN");
+        JLabel lblSub = new JLabel(isAdmin ? "PANEL DE ADMINISTRACIÓN" : "EXPLORA LOS PARTIDOS");
         lblSub.setFont(new Font("Consolas", Font.BOLD, 11));
         lblSub.setForeground(TEXT_CYAN);
         lblSub.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel lblTitle = new JLabel("Control de Partidos");
+        JLabel lblTitle = new JLabel("Partidos del Mundial");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 28));
         lblTitle.setForeground(Color.WHITE);
         lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -83,23 +91,25 @@ public class PanelPartidos extends JPanel {
         headerPanel.add(lblTitle);
         headerPanel.add(Box.createVerticalStrut(20));
 
-        // Botón Programar Partido Dorado
-        JButton btnProgramar = createGoldButton("⊕ Programar Nuevo Partido");
-        btnProgramar.addActionListener(e -> abrirDialogoProgramar());
-        btnProgramar.setAlignmentX(Component.CENTER_ALIGNMENT);
-        headerPanel.add(btnProgramar);
-        headerPanel.add(Box.createVerticalStrut(25));
+        if (isAdmin) {
+            // Botón Programar Partido Dorado
+            JButton btnProgramar = createGoldButton("⊕ Programar Nuevo Partido");
+            btnProgramar.addActionListener(e -> abrirDialogoProgramar());
+            btnProgramar.setAlignmentX(Component.CENTER_ALIGNMENT);
+            headerPanel.add(btnProgramar);
+            headerPanel.add(Box.createVerticalStrut(25));
+        }
         contentPanel.add(headerPanel);
 
         // 2. TARJETAS DE ESTADÍSTICAS GLOBALES
-        JPanel statsPanel = new JPanel(new GridLayout(1, 3, 20, 0));
+        statsPanel = new JPanel(new GridLayout(1, 3, 20, 0));
         statsPanel.setOpaque(false);
         statsPanel.setMaximumSize(new Dimension(800, 100));
         statsPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JPanel card1 = createStatCard("TOTAL 2026", "0", "Partidos Programados", "🏟️");
-        JPanel card2 = createStatCard("LIVE NOW", "0", "Encuentros en Vivo", "📡");
-        JPanel card3 = createStatCard("PRÓXIMAS 24H", "0", "Partidos por Iniciar", "⏰");
+        JPanel card1 = createStatCard("TOTAL 2026", "0", "Partidos Programados", FontAwesomeSolid.CALENDAR_ALT);
+        JPanel card2 = createStatCard("LIVE NOW", "0", "Encuentros en Vivo", FontAwesomeSolid.SATELLITE_DISH);
+        JPanel card3 = createStatCard("PRÓXIMAS 24H", "0", "Partidos por Iniciar", FontAwesomeSolid.CLOCK);
 
         lblTotalScheduled = (JLabel) card1.getClientProperty("lblValue");
         lblTotalLive = (JLabel) card2.getClientProperty("lblValue");
@@ -195,6 +205,21 @@ public class PanelPartidos extends JPanel {
         javax.swing.Timer timerEstadisticas = new javax.swing.Timer(5000, e -> actualizarEstadisticasGlobales());
         timerEstadisticas.setRepeats(true);
         timerEstadisticas.start();
+
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                int width = getWidth();
+                if (width < 750) {
+                    statsPanel.setLayout(new GridLayout(3, 1, 0, 15));
+                    statsPanel.setMaximumSize(new Dimension(800, 320));
+                } else {
+                    statsPanel.setLayout(new GridLayout(1, 3, 20, 0));
+                    statsPanel.setMaximumSize(new Dimension(800, 100));
+                }
+                statsPanel.revalidate();
+            }
+        });
     }
 
     private void actualizarEstadisticasGlobales() {
@@ -243,7 +268,7 @@ public class PanelPartidos extends JPanel {
             }
 
             String estadio = estadiosPartidos.get(p.getId());
-            String horario = horariosPartidos.get(p.getId());
+            String horario = p.getFecha() != null ? p.getFecha().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : horariosPartidos.get(p.getId());
 
             // Filtro de búsqueda
             boolean coincideLocal = p.getEquipoLocal().getNombre().toLowerCase().contains(query);
@@ -293,7 +318,7 @@ public class PanelPartidos extends JPanel {
         return p;
     }
 
-    private JPanel createStatCard(String title, String value, String subtitle, String icon) {
+    private JPanel createStatCard(String title, String value, String subtitle, Ikon icon) {
         JPanel p = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -335,8 +360,8 @@ public class PanelPartidos extends JPanel {
 
         p.putClientProperty("lblValue", lblVal);
 
-        JLabel lblIcon = new JLabel(icon);
-        lblIcon.setFont(new Font("Segoe UI", Font.PLAIN, 28));
+        FontIcon fIcon = FontIcon.of(icon, 28, TEXT_LIGHT);
+        JLabel lblIcon = new JLabel(fIcon);
 
         p.add(textPanel, BorderLayout.CENTER);
         p.add(lblIcon, BorderLayout.EAST);
@@ -400,8 +425,8 @@ public class PanelPartidos extends JPanel {
         // Local
         JPanel pLoc = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         pLoc.setOpaque(false);
-        JLabel flagLoc = new JLabel(obtenerBanderaEstetica(partido.getEquipoLocal().getNombre()));
-        flagLoc.setFont(new Font("Segoe UI", Font.PLAIN, 28));
+        JLabel flagLoc = new JLabel();
+        utils.FlagManager.setFlagIconAsync(flagLoc, partido.getEquipoLocal().getNombre(), 28, 18);
         JLabel nameLoc = new JLabel(partido.getEquipoLocal().getNombre().toUpperCase());
         nameLoc.setFont(new Font("Segoe UI", Font.BOLD, 13));
         nameLoc.setForeground(Color.WHITE);
@@ -428,8 +453,8 @@ public class PanelPartidos extends JPanel {
         // Visita
         JPanel pVis = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         pVis.setOpaque(false);
-        JLabel flagVis = new JLabel(obtenerBanderaEstetica(partido.getEquipoVisita().getNombre()));
-        flagVis.setFont(new Font("Segoe UI", Font.PLAIN, 28));
+        JLabel flagVis = new JLabel();
+        utils.FlagManager.setFlagIconAsync(flagVis, partido.getEquipoVisita().getNombre(), 28, 18);
         JLabel nameVis = new JLabel(partido.getEquipoVisita().getNombre().toUpperCase());
         nameVis.setFont(new Font("Segoe UI", Font.BOLD, 13));
         nameVis.setForeground(Color.WHITE);
@@ -443,10 +468,10 @@ public class PanelPartidos extends JPanel {
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 5));
         buttons.setOpaque(false);
 
-        JButton btnScore = createActionBtn("Cambiar Estado");
+        JButton btnScore = createActionBtn("Cambiar Estado", null);
         btnScore.addActionListener(e -> finalizarPartido(partido));
         
-        JButton btnInc = createActionBtn("✏️ Incidencias / Goles");
+        JButton btnInc = createActionBtn("Incidencias / Goles", FontAwesomeSolid.PENCIL_ALT);
         btnInc.addActionListener(e -> abrirDialogoGoles(partido));
 
         buttons.add(btnScore);
@@ -483,8 +508,8 @@ public class PanelPartidos extends JPanel {
         JLabel nameLoc = new JLabel(partido.getEquipoLocal().getNombre().toUpperCase());
         nameLoc.setFont(new Font("Segoe UI", Font.BOLD, 13));
         nameLoc.setForeground(Color.WHITE);
-        JLabel flagLoc = new JLabel(obtenerBanderaEstetica(partido.getEquipoLocal().getNombre()));
-        flagLoc.setFont(new Font("Segoe UI", Font.PLAIN, 28));
+        JLabel flagLoc = new JLabel();
+        utils.FlagManager.setFlagIconAsync(flagLoc, partido.getEquipoLocal().getNombre(), 28, 18);
         pLoc.add(nameLoc); pLoc.add(flagLoc);
 
         JPanel pVS = new JPanel(new GridBagLayout());
@@ -499,8 +524,8 @@ public class PanelPartidos extends JPanel {
 
         JPanel pVis = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         pVis.setOpaque(false);
-        JLabel flagVis = new JLabel(obtenerBanderaEstetica(partido.getEquipoVisita().getNombre()));
-        flagVis.setFont(new Font("Segoe UI", Font.PLAIN, 28));
+        JLabel flagVis = new JLabel();
+        utils.FlagManager.setFlagIconAsync(flagVis, partido.getEquipoVisita().getNombre(), 28, 18);
         JLabel nameVis = new JLabel(partido.getEquipoVisita().getNombre().toUpperCase());
         nameVis.setFont(new Font("Segoe UI", Font.BOLD, 13));
         nameVis.setForeground(Color.WHITE);
@@ -514,10 +539,10 @@ public class PanelPartidos extends JPanel {
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 5));
         buttons.setOpaque(false);
 
-        JButton btnEdit = createActionBtn("✏️ Editar Horario");
+        JButton btnEdit = createActionBtn("Editar Horario", FontAwesomeSolid.PENCIL_ALT);
         btnEdit.addActionListener(e -> abrirDialogoHorario(partido));
 
-        JButton btnStart = createActionBtn("▶️ Iniciar");
+        JButton btnStart = createActionBtn("Iniciar", FontAwesomeSolid.PLAY);
         btnStart.addActionListener(e -> iniciarPartido(partido));
 
         buttons.add(btnEdit);
@@ -577,7 +602,7 @@ public class PanelPartidos extends JPanel {
         return card;
     }
 
-    private JButton createActionBtn(String text) {
+    private JButton createActionBtn(String text, Ikon icon) {
         JButton btn = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -585,38 +610,21 @@ public class PanelPartidos extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(BORDER_CARD);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
-                FontMetrics fm = g2.getFontMetrics(getFont());
-                int textX = (getWidth() - fm.stringWidth(getText())) / 2;
-                int textY = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-                g2.setColor(Color.WHITE);
-                g2.drawString(getText(), textX, textY);
                 g2.dispose();
+                super.paintComponent(g);
             }
         };
         btn.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        btn.setForeground(Color.WHITE);
+        if (icon != null) {
+            btn.setIcon(FontIcon.of(icon, 12, Color.WHITE));
+        }
         btn.setContentAreaFilled(false);
         btn.setBorderPainted(false);
         btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setPreferredSize(new Dimension(140, 26));
         return btn;
-    }
-
-    private String obtenerBanderaEstetica(String pais) {
-        String u = pais.toUpperCase();
-        if (u.contains("MEX")) return "🇲🇽";
-        if (u.contains("USA") || u.contains("ESTADOS UNIDOS")) return "🇺🇸";
-        if (u.contains("ARG")) return "🇦🇷";
-        if (u.contains("FRA")) return "🇫🇷";
-        if (u.contains("ESP")) return "🇪🇸";
-        if (u.contains("BRA")) return "🇧🇷";
-        if (u.contains("CAN")) return "🇨🇦";
-        if (u.contains("GER") || u.contains("ALEMANIA")) return "🇩🇪";
-        if (u.contains("HOL") || u.contains("PAÍSES BAJOS")) return "🇳🇱";
-        if (u.contains("COL")) return "🇨🇴";
-        if (u.contains("URU")) return "🇺🇾";
-        if (u.contains("JAP")) return "🇯🇵";
-        return "🏳️";
     }
 
     // --- ACCIONES Y MODALES ---
@@ -675,19 +683,9 @@ public class PanelPartidos extends JPanel {
         JTextField txtMin = new JTextField(String.valueOf(minutosPartidos.getOrDefault(p.getId(), 1)), 5);
         txtMin.setBackground(FIELD_BG); txtMin.setForeground(Color.WHITE); txtMin.setCaretColor(Color.WHITE);
 
-        javax.swing.text.DocumentFilter onlyNumbers = new javax.swing.text.DocumentFilter() {
-            @Override
-            public void insertString(FilterBypass fb, int offset, String string, javax.swing.text.AttributeSet attr) throws javax.swing.text.BadLocationException {
-                if (string != null && string.matches("[0-9]*")) super.insertString(fb, offset, string, attr);
-            }
-            @Override
-            public void replace(FilterBypass fb, int offset, int length, String text, javax.swing.text.AttributeSet attrs) throws javax.swing.text.BadLocationException {
-                if (text != null && text.matches("[0-9]*")) super.replace(fb, offset, length, text, attrs);
-            }
-        };
-        ((javax.swing.text.AbstractDocument) txtL.getDocument()).setDocumentFilter(onlyNumbers);
-        ((javax.swing.text.AbstractDocument) txtV.getDocument()).setDocumentFilter(onlyNumbers);
-        ((javax.swing.text.AbstractDocument) txtMin.getDocument()).setDocumentFilter(onlyNumbers);
+        ((javax.swing.text.AbstractDocument) txtL.getDocument()).setDocumentFilter(ValidationUtils.getNumbersOnlyFilter(2));
+        ((javax.swing.text.AbstractDocument) txtV.getDocument()).setDocumentFilter(ValidationUtils.getNumbersOnlyFilter(2));
+        ((javax.swing.text.AbstractDocument) txtMin.getDocument()).setDocumentFilter(ValidationUtils.getNumbersOnlyFilter(3));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(6, 6, 6, 6); gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -707,6 +705,11 @@ public class PanelPartidos extends JPanel {
                 int nV = Integer.parseInt(txtV.getText().trim());
                 int min = Integer.parseInt(txtMin.getText().trim());
 
+                if (min < 1 || min > 120) {
+                    JOptionPane.showMessageDialog(dialog, "El minuto debe estar entre 1 y 120.", "Error", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+
                 golesLocalVivo.put(p.getId(), nL);
                 golesVisitaVivo.put(p.getId(), nV);
                 minutosPartidos.put(p.getId(), min);
@@ -714,7 +717,7 @@ public class PanelPartidos extends JPanel {
                 dialog.dispose();
                 filtrarYRenderizar();
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(dialog, "Valores numéricos inválidos.", "Error", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(dialog, "Valores numéricos inválidos o campos vacíos.", "Error", JOptionPane.WARNING_MESSAGE);
             }
         });
 
@@ -734,8 +737,9 @@ public class PanelPartidos extends JPanel {
         content.setBackground(BG_CARD);
         content.setBorder(new EmptyBorder(15, 15, 15, 15));
 
-        JTextField txtHor = new JTextField(horariosPartidos.get(p.getId()), 12);
-        JTextField txtEst = new JTextField(estadiosPartidos.get(p.getId()), 12);
+        String fechaActual = p.getFecha() != null ? p.getFecha().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "2026-06-11 20:00";
+        JTextField txtHor = new JTextField(fechaActual, 15);
+        JTextField txtEst = new JTextField(estadiosPartidos.get(p.getId()), 15);
         txtHor.setBackground(FIELD_BG); txtHor.setForeground(Color.WHITE); txtHor.setCaretColor(Color.WHITE);
         txtEst.setBackground(FIELD_BG); txtEst.setForeground(Color.WHITE); txtEst.setCaretColor(Color.WHITE);
 
@@ -756,6 +760,16 @@ public class PanelPartidos extends JPanel {
                 JOptionPane.showMessageDialog(dialog, "Complete los campos.", "Advertencia", JOptionPane.WARNING_MESSAGE);
                 return;
             }
+            try {
+                LocalDateTime ldt = LocalDateTime.parse(hor, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+                if (controller.actualizarHorarioPartido(p.getId(), ldt)) {
+                    p.setFecha(ldt); // Actualizar en memoria para reflejar rápido
+                }
+            } catch (DateTimeParseException ex) {
+                JOptionPane.showMessageDialog(dialog, "Formato de fecha inválido. Use yyyy-MM-dd HH:mm", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
             horariosPartidos.put(p.getId(), hor);
             estadiosPartidos.put(p.getId(), est);
             dialog.dispose();
@@ -841,7 +855,8 @@ public class PanelPartidos extends JPanel {
         // Forzar disparador inicial
         if (cbLoc.getItemCount() > 0) cbLoc.setSelectedIndex(0);
 
-        JTextField txtHora = new JTextField("HOY - 21:00", 12);
+        String fechaSugerida = LocalDateTime.now().plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        JTextField txtHora = new JTextField(fechaSugerida, 15);
         txtHora.setBackground(FIELD_BG); txtHora.setForeground(Color.WHITE); txtHora.setCaretColor(Color.WHITE);
 
         GridBagConstraints gbc = new GridBagConstraints();
@@ -875,8 +890,16 @@ public class PanelPartidos extends JPanel {
                 return;
             }
 
+            LocalDateTime fechaHora = null;
+            try {
+                fechaHora = LocalDateTime.parse(hor, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            } catch (DateTimeParseException ex) {
+                JOptionPane.showMessageDialog(dialog, "Formato de fecha inválido. Use yyyy-MM-dd HH:mm", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
             List<Partido> actuales = controller.obtenerPartidos();
-            if (controller.crearPartido(local, visita, fase, actuales)) {
+            if (controller.crearPartido(local, visita, fase, actuales, fechaHora)) {
                 // Obtener el partido recién programado para asignarle estadio y horario
                 List<Partido> despues = controller.obtenerPartidos();
                 if (!despues.isEmpty()) {

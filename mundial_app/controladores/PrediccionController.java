@@ -6,6 +6,7 @@ import dao.PrediccionDAO;
 import modelos.Apostador;
 import modelos.Partido;
 import modelos.Prediccion;
+import utils.SesionUsuario;
 import java.util.List;
 
 /**
@@ -34,13 +35,13 @@ public class PrediccionController {
      * @param golesVisitaStr Goles del equipo visitante (como texto, para validar).
      * @return true si se guardó correctamente, false si falló.
      */
-    public boolean registrarPrediccion(Apostador apostador, Partido partido,
-                                       String golesLocalStr, String golesVisitaStr) {
+    public boolean registrarPrediccion(Partido partido, String golesLocalStr, String golesVisitaStr) {
         ultimoError = null;
 
+        Apostador apostador = SesionUsuario.getApostadorActual();
         // Validación 1: Apostador y partido requeridos
         if (apostador == null) {
-            ultimoError = "⚠ No hay apostadores registrados.\nVaya a la pestaña 'Apostadores' y registre uno primero.";
+            ultimoError = "⚠ Sesión inválida. No se encontró su perfil de apostador.";
             return false;
         }
         if (partido == null) {
@@ -55,6 +56,12 @@ public class PrediccionController {
         }
         if (golesVisitaStr == null || golesVisitaStr.trim().isEmpty()) {
             ultimoError = "⚠ Debe ingresar los goles predichos para el equipo visitante.";
+            return false;
+        }
+
+        // Validación 2.5: Verificar si el partido ya está bloqueado (menos de 10 minutos para iniciar)
+        if (partido.isLocked()) {
+            ultimoError = "🔒 El partido ya comenzó o está a menos de 10 minutos de empezar.\nNo se aceptan más predicciones.";
             return false;
         }
 
@@ -87,11 +94,55 @@ public class PrediccionController {
         }
     }
 
+    public boolean modificarPrediccion(Prediccion existente, String golesLocalStr, String golesVisitaStr) {
+        ultimoError = null;
+        if (existente == null) return false;
+
+        if (existente.getPartido().isLocked()) {
+            ultimoError = "🔒 El partido está bloqueado. Ya no puede modificar su predicción.";
+            return false;
+        }
+
+        try {
+            int gl = Integer.parseInt(golesLocalStr.trim());
+            int gv = Integer.parseInt(golesVisitaStr.trim());
+
+            if (gl < 0 || gv < 0) {
+                ultimoError = "⚠ Los goles no pueden ser un número negativo.";
+                return false;
+            }
+            if (gl > 30 || gv > 30) {
+                ultimoError = "⚠ El número de goles parece inválido (máximo 30).";
+                return false;
+            }
+
+            boolean resultado = prediccionDAO.actualizarPrediccion(existente.getId(), gl, gv);
+            if (!resultado) ultimoError = "✖ Error al actualizar la predicción.";
+            return resultado;
+
+        } catch (NumberFormatException e) {
+            ultimoError = "✖ Los goles deben ser números enteros válidos.";
+            return false;
+        }
+    }
+
     /**
      * Obtiene la lista completa de predicciones desde la base de datos.
      * @return Lista de predicciones.
      */
     public List<Prediccion> obtenerPredicciones() {
+        Apostador actual = SesionUsuario.getApostadorActual();
+        if (actual != null) {
+            return prediccionDAO.obtenerPrediccionesPorApostador(actual.getId());
+        }
+        return prediccionDAO.obtenerPredicciones();
+    }
+
+    /**
+     * Obtiene la lista completa de predicciones sin filtrar por usuario.
+     * @return Lista de predicciones globales.
+     */
+    public List<Prediccion> obtenerTodasPredicciones() {
         return prediccionDAO.obtenerPredicciones();
     }
 

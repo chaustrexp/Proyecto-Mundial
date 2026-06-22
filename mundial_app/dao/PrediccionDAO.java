@@ -39,7 +39,9 @@ public class PrediccionDAO {
                 Apostador apos = new Apostador(rs.getInt("id_apos"), rs.getString("nom_apos"), 0);
                 Equipo eL = new Equipo(0, rs.getString("nom_local"), "", "");
                 Equipo eV = new Equipo(0, rs.getString("nom_visita"), "", "");
-                Partido part = new Partido(rs.getInt("id_part"), eL, eV, null, "", 0, 0);
+                java.time.LocalDateTime fecha = null;
+                // Asumiendo que la query normal no trae la fecha del partido, la dejamos en null.
+                Partido part = new Partido(rs.getInt("id_part"), eL, eV, fecha, "", 0, 0);
                 
                 lista.add(new Prediccion(rs.getInt("id"), apos, part, rs.getInt("goles_pred_eq1"), rs.getInt("goles_pred_eq2"), rs.getInt("puntos_ganados")));
             }
@@ -47,6 +49,53 @@ public class PrediccionDAO {
             e.printStackTrace();
         }
         return lista;
+    }
+
+    public List<Prediccion> obtenerPrediccionesPorApostador(int apostadorId) {
+        List<Prediccion> lista = new ArrayList<>();
+        String sql = "SELECT p.id, p.goles_pred_eq1, p.goles_pred_eq2, p.puntos_ganados, " +
+                     "a.id as id_apos, a.nombre as nom_apos, " +
+                     "part.id as id_part, part.fecha as fecha_part, e1.nombre as nom_local, e2.nombre as nom_visita " +
+                     "FROM predicciones p " +
+                     "JOIN apostadores a ON p.apostador_id = a.id " +
+                     "JOIN partidos part ON p.partido_id = part.id " +
+                     "JOIN equipos e1 ON part.equipo_local_id = e1.id " +
+                     "JOIN equipos e2 ON part.equipo_visita_id = e2.id " +
+                     "WHERE p.apostador_id = ? " +
+                     "ORDER BY p.id DESC";
+        try (Connection conn = ConexionBD.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, apostadorId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Apostador apos = new Apostador(rs.getInt("id_apos"), rs.getString("nom_apos"), 0);
+                    Equipo eL = new Equipo(0, rs.getString("nom_local"), "", "");
+                    Equipo eV = new Equipo(0, rs.getString("nom_visita"), "", "");
+                    java.time.LocalDateTime fecha = null;
+                    if (rs.getTimestamp("fecha_part") != null) {
+                        fecha = rs.getTimestamp("fecha_part").toLocalDateTime();
+                    }
+                    Partido part = new Partido(rs.getInt("id_part"), eL, eV, fecha, "", 0, 0);
+                    
+                    lista.add(new Prediccion(rs.getInt("id"), apos, part, rs.getInt("goles_pred_eq1"), rs.getInt("goles_pred_eq2"), rs.getInt("puntos_ganados")));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return lista;
+    }
+
+    public boolean actualizarPrediccion(int prediccionId, int golesEq1, int golesEq2) {
+        String sql = "UPDATE predicciones SET goles_pred_eq1 = ?, goles_pred_eq2 = ? WHERE id = ?";
+        try (Connection conn = ConexionBD.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, golesEq1);
+            ps.setInt(2, golesEq2);
+            ps.setInt(3, prediccionId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     public void calcularPuntosParaPartido(int partidoId, int golesRealLocal, int golesRealVisita) {
@@ -91,5 +140,32 @@ public class PrediccionDAO {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+    public Prediccion obtenerPrediccionPorApostadorYPartido(int apostadorId, int partidoId) {
+        String sql = "SELECT p.id, p.goles_pred_eq1, p.goles_pred_eq2, p.puntos_ganados, " +
+                     "a.id as id_apos, a.nombre as nom_apos, a.puntos_total, " +
+                     "part.id as id_part, e1.nombre as nom_local, e2.nombre as nom_visita " +
+                     "FROM predicciones p " +
+                     "JOIN apostadores a ON p.apostador_id = a.id " +
+                     "JOIN partidos part ON p.partido_id = part.id " +
+                     "JOIN equipos e1 ON part.equipo_local_id = e1.id " +
+                     "JOIN equipos e2 ON part.equipo_visita_id = e2.id " +
+                     "WHERE p.apostador_id = ? AND p.partido_id = ?";
+        try (Connection conn = ConexionBD.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, apostadorId);
+            ps.setInt(2, partidoId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Apostador apos = new Apostador(rs.getInt("id_apos"), rs.getString("nom_apos"), rs.getInt("puntos_total"));
+                    Equipo eL = new Equipo(0, rs.getString("nom_local"), "", "");
+                    Equipo eV = new Equipo(0, rs.getString("nom_visita"), "", "");
+                    Partido part = new Partido(rs.getInt("id_part"), eL, eV, null, "", 0, 0);
+                    return new Prediccion(rs.getInt("id"), apos, part, rs.getInt("goles_pred_eq1"), rs.getInt("goles_pred_eq2"), rs.getInt("puntos_ganados"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

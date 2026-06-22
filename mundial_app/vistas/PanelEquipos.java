@@ -7,6 +7,11 @@ import modelos.Partido;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
+import javax.swing.text.AbstractDocument;
+import utils.ValidationUtils;
+import org.kordamp.ikonli.Ikon;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
@@ -31,9 +36,11 @@ public class PanelEquipos extends JPanel {
 
     private EquipoDAO equipoDao;
     private PartidoDAO partidoDao;
+    private boolean isAdmin;
 
     private JPanel groupsContainer; // Contenedor dinámico de grupos y equipos
     private JTextField txtSearch;   // Campo de búsqueda
+    private JPanel statsPanel;
 
     // Cards de estadísticas globales
     private JLabel lblTotalTeams;
@@ -54,7 +61,8 @@ public class PanelEquipos extends JPanel {
             "Inglaterra", "Croacia", "Ghana", "Panamá"
     };
 
-    public PanelEquipos() {
+    public PanelEquipos(boolean isAdmin) {
+        this.isAdmin = isAdmin;
         equipoDao = new EquipoDAO();
         partidoDao = new PartidoDAO();
 
@@ -73,12 +81,12 @@ public class PanelEquipos extends JPanel {
         headerPanel.setOpaque(false);
         headerPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel lblTitle = new JLabel("Gestión de Equipos");
+        JLabel lblTitle = new JLabel("Equipos Participantes");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 28));
         lblTitle.setForeground(Color.WHITE);
         lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel lblDesc = new JLabel("Panel de control administrativo para el Mundial 2026");
+        JLabel lblDesc = new JLabel(isAdmin ? "Panel de control administrativo para el Mundial 2026" : "Información de los equipos del torneo");
         lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblDesc.setForeground(TEXT_MUTED);
         lblDesc.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -126,13 +134,13 @@ public class PanelEquipos extends JPanel {
         contentPanel.add(headerPanel);
 
         // 3. TARJETAS DE ESTADÍSTICAS GLOBALES
-        JPanel statsPanel = new JPanel(new GridLayout(1, 2, 20, 0));
+        statsPanel = new JPanel(new GridLayout(1, 2, 20, 0));
         statsPanel.setOpaque(false);
         statsPanel.setMaximumSize(new Dimension(800, 100));
         statsPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JPanel card1 = createStatCard("EQUIPOS CLASIFICADOS", "0", "🌍");
-        JPanel card2 = createStatCard("GRUPOS ACTIVOS", "0", "🎛️");
+        JPanel card1 = createStatCard("EQUIPOS CLASIFICADOS", "0", FontAwesomeSolid.GLOBE_AMERICAS);
+        JPanel card2 = createStatCard("GRUPOS ACTIVOS", "0", FontAwesomeSolid.SLIDERS_H);
 
         lblTotalTeams = (JLabel) card1.getClientProperty("lblValue");
         lblTotalGroups = (JLabel) card2.getClientProperty("lblValue");
@@ -149,12 +157,14 @@ public class PanelEquipos extends JPanel {
         groupsContainer.setAlignmentX(Component.CENTER_ALIGNMENT);
         contentPanel.add(groupsContainer);
 
-        // 5. BOTÓN AÑADIR PUNTEADO
-        JPanel btnAddDotted = createDottedAddCard();
-        btnAddDotted.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btnAddDotted.setMaximumSize(new Dimension(800, 80));
-        contentPanel.add(btnAddDotted);
-        contentPanel.add(Box.createVerticalStrut(40));
+        // 5. BOTÓN AÑADIR PUNTEADO (Solo admin)
+        if (isAdmin) {
+            JPanel btnAddDotted = createDottedAddCard();
+            btnAddDotted.setAlignmentX(Component.CENTER_ALIGNMENT);
+            btnAddDotted.setMaximumSize(new Dimension(800, 80));
+            contentPanel.add(btnAddDotted);
+            contentPanel.add(Box.createVerticalStrut(40));
+        }
 
         JScrollPane scrollPane = new JScrollPane(contentPanel);
         scrollPane.setBorder(null);
@@ -167,7 +177,7 @@ public class PanelEquipos extends JPanel {
         // Footer
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.CENTER));
         footer.setBackground(BG_APP);
-        JLabel footTxt = new JLabel("TROPHY ELITE 2026 ADMIN CONSOLE  •  LATENCY: 24ms  •  STATUS: OPTIMAL");
+        JLabel footTxt = new JLabel(isAdmin ? "TROPHY ELITE 2026 ADMIN CONSOLE  •  LATENCY: 24ms  •  STATUS: OPTIMAL" : "TROPHY ELITE 2026 EXPLORER  •  SYSTEM OK");
         footTxt.setForeground(TEXT_CYAN);
         footTxt.setFont(new Font("Consolas", Font.BOLD, 10));
         footer.add(footTxt);
@@ -176,6 +186,21 @@ public class PanelEquipos extends JPanel {
         // Cargar datos
         actualizarEstadisticasGlobales();
         filtrarYRenderizar();
+
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                int width = getWidth();
+                if (width < 750) {
+                    statsPanel.setLayout(new GridLayout(2, 1, 0, 15));
+                    statsPanel.setMaximumSize(new Dimension(800, 220));
+                } else {
+                    statsPanel.setLayout(new GridLayout(1, 2, 20, 0));
+                    statsPanel.setMaximumSize(new Dimension(800, 100));
+                }
+                statsPanel.revalidate();
+            }
+        });
     }
 
     private void actualizarEstadisticasGlobales() {
@@ -300,7 +325,7 @@ public class PanelEquipos extends JPanel {
 
     // --- CREADORES DE COMPONENTES VISUALES ---
 
-    private JPanel createStatCard(String title, String value, String icon) {
+    private JPanel createStatCard(String title, String value, Ikon icon) {
         JPanel p = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -336,8 +361,8 @@ public class PanelEquipos extends JPanel {
 
         p.putClientProperty("lblValue", lblVal);
 
-        JLabel lblIcon = new JLabel(icon);
-        lblIcon.setFont(new Font("Segoe UI", Font.PLAIN, 28));
+        FontIcon fIcon = FontIcon.of(icon, 28, TEXT_LIGHT);
+        JLabel lblIcon = new JLabel(fIcon);
 
         p.add(textSide, BorderLayout.CENTER);
         p.add(lblIcon, BorderLayout.EAST);
@@ -371,24 +396,10 @@ public class PanelEquipos extends JPanel {
         JPanel flagAndNames = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         flagAndNames.setOpaque(false);
 
-        JLabel lblFlag = new JLabel("🏳️");
-        lblFlag.setFont(new Font("Segoe UI", Font.PLAIN, 28));
+        JLabel lblFlag = new JLabel(FontIcon.of(FontAwesomeSolid.FLAG, 28, TEXT_MUTED));
 
-        // Asignación de banderas estéticas según nombre de equipo
-        String nUpper = equipo.getNombre().toUpperCase();
-        if (nUpper.contains("MEX")) lblFlag.setText("🇲🇽");
-        else if (nUpper.contains("USA") || nUpper.contains("ESTADOS UNIDOS")) lblFlag.setText("🇺🇸");
-        else if (nUpper.contains("ARG")) lblFlag.setText("🇦🇷");
-        else if (nUpper.contains("FRA")) lblFlag.setText("🇫🇷");
-        else if (nUpper.contains("ESP")) lblFlag.setText("🇪🇸");
-        else if (nUpper.contains("BRA")) lblFlag.setText("🇧🇷");
-        else if (nUpper.contains("CAN")) lblFlag.setText("🇨🇦");
-        else if (nUpper.contains("GER") || nUpper.contains("ALEMANIA")) lblFlag.setText("🇩🇪");
-        else if (nUpper.contains("HOL") || nUpper.contains("PAÍSES BAJOS")) lblFlag.setText("🇳🇱");
-        else if (nUpper.contains("ITA")) lblFlag.setText("🇮🇹");
-        else if (nUpper.contains("URU")) lblFlag.setText("🇺🇾");
-        else if (nUpper.contains("COL")) lblFlag.setText("🇨🇴");
-        else if (nUpper.contains("ENG") || nUpper.contains("INGLATERRA")) lblFlag.setText("🏴󠁧󠁢󠁥󠁮󠁧󠁿");
+        // Cargar bandera real asincrónicamente
+        utils.FlagManager.setFlagIconAsync(lblFlag, equipo.getNombre(), 36, 26);
 
         JPanel names = new JPanel();
         names.setLayout(new BoxLayout(names, BoxLayout.Y_AXIS));
@@ -441,36 +452,39 @@ public class PanelEquipos extends JPanel {
 
         card.add(statsContainer, BorderLayout.CENTER);
 
-        // PARTE INFERIOR (Botón Editar Stats / Datos)
-        JButton btnEdit = new JButton("✏️ Editar Stats / Datos") {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(getModel().isRollover() ? TEXT_GOLD.brighter() : TEXT_GOLD);
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
-                
-                FontMetrics fm = g2.getFontMetrics(getFont());
-                int textX = (getWidth() - fm.stringWidth(getText())) / 2;
-                int textY = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-                g2.setColor(new Color(29, 29, 29));
-                g2.drawString(getText(), textX, textY);
-                g2.dispose();
-            }
-        };
-        btnEdit.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnEdit.setContentAreaFilled(false);
-        btnEdit.setBorderPainted(false);
-        btnEdit.setFocusPainted(false);
-        btnEdit.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnEdit.setPreferredSize(new Dimension(150, 30));
-        btnEdit.addActionListener(e -> abrirDialogoEquipo(equipo));
+        if (isAdmin) {
+            // PARTE INFERIOR (Botón Editar Stats / Datos)
+            JButton btnEdit = new JButton(" Editar Stats / Datos") {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setColor(getModel().isRollover() ? TEXT_GOLD.brighter() : TEXT_GOLD);
+                    g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
+                    
+                    FontMetrics fm = g2.getFontMetrics(getFont());
+                    int textX = (getWidth() - fm.stringWidth(getText())) / 2;
+                    int textY = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+                    g2.setColor(new Color(29, 29, 29));
+                    g2.drawString(getText(), textX, textY);
+                    g2.dispose();
+                }
+            };
+            btnEdit.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            btnEdit.setIcon(FontIcon.of(FontAwesomeSolid.PENCIL_ALT, 12, new Color(29, 29, 29)));
+            btnEdit.setContentAreaFilled(false);
+            btnEdit.setBorderPainted(false);
+            btnEdit.setFocusPainted(false);
+            btnEdit.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            btnEdit.setPreferredSize(new Dimension(180, 30));
+            btnEdit.addActionListener(e -> abrirDialogoEquipo(equipo));
 
-        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 5));
-        bottomPanel.setOpaque(false);
-        bottomPanel.add(btnEdit);
+            JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 5));
+            bottomPanel.setOpaque(false);
+            bottomPanel.add(btnEdit);
 
-        card.add(bottomPanel, BorderLayout.SOUTH);
+            card.add(bottomPanel, BorderLayout.SOUTH);
+        }
 
         return card;
     }
@@ -552,6 +566,10 @@ public class PanelEquipos extends JPanel {
         JTextField txtNombre = new JTextField(15);
         JTextField txtGrupo = new JTextField(5);
         JTextField txtConf = new JTextField(15);
+        
+        ((AbstractDocument) txtNombre.getDocument()).setDocumentFilter(ValidationUtils.getLettersOnlyFilter(40));
+        ((AbstractDocument) txtGrupo.getDocument()).setDocumentFilter(ValidationUtils.getGroupLetterFilter());
+        ((AbstractDocument) txtConf.getDocument()).setDocumentFilter(ValidationUtils.getLettersOnlyFilter(40));
 
         txtNombre.setBackground(FIELD_BG); txtNombre.setForeground(Color.WHITE); txtNombre.setCaretColor(Color.WHITE);
         txtGrupo.setBackground(FIELD_BG); txtGrupo.setForeground(Color.WHITE); txtGrupo.setCaretColor(Color.WHITE);
@@ -604,7 +622,7 @@ public class PanelEquipos extends JPanel {
             String conf = txtConf.getText().trim();
 
             if (name.isEmpty() || group.isEmpty() || conf.isEmpty()) {
-                JOptionPane.showMessageDialog(dialog, "Complete todos los campos.", "Campos vacíos", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(dialog, "Todos los campos son obligatorios.", "Error", JOptionPane.WARNING_MESSAGE);
                 return;
             }
 

@@ -1,19 +1,20 @@
 package modelos;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 public class Partido {
     private int id;
     private Equipo equipoLocal;
     private Equipo equipoVisita;
-    private Date fecha;
+    private LocalDateTime fecha;
     private String fase;
     private Integer golesLocal;
     private Integer golesVisita;
 
     public Partido() {}
 
-    public Partido(int id, Equipo equipoLocal, Equipo equipoVisita, Date fecha, String fase, Integer golesLocal, Integer golesVisita) {
+    public Partido(int id, Equipo equipoLocal, Equipo equipoVisita, LocalDateTime fecha, String fase, Integer golesLocal, Integer golesVisita) {
         this.id = id;
         this.equipoLocal = equipoLocal;
         this.equipoVisita = equipoVisita;
@@ -32,8 +33,8 @@ public class Partido {
     public Equipo getEquipoVisita() { return equipoVisita; }
     public void setEquipoVisita(Equipo equipoVisita) { this.equipoVisita = equipoVisita; }
 
-    public Date getFecha() { return fecha; }
-    public void setFecha(Date fecha) { this.fecha = fecha; }
+    public LocalDateTime getFecha() { return fecha; }
+    public void setFecha(LocalDateTime fecha) { this.fecha = fecha; }
 
     public String getFase() { return fase; }
     public void setFase(String fase) { this.fase = fase; }
@@ -47,5 +48,12 @@ public class Partido {
     @Override
     public String toString() {
         return equipoLocal.getNombre() + " vs " + equipoVisita.getNombre() + " (" + fase + ")";
+    }
+
+    public boolean isLocked() {
+        if (fecha == null) return false;
+        LocalDateTime now = LocalDateTime.now();
+        // Está bloqueado si ya pasó la fecha o faltan 10 minutos o menos
+        return now.isAfter(fecha) || ChronoUnit.MINUTES.between(now, fecha) <= 10;
     }
 }

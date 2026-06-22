@@ -5,6 +5,9 @@ import modelos.Apostador;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
+import org.kordamp.ikonli.Ikon;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.AbstractDocument;
@@ -46,6 +49,9 @@ public class PanelApostadores extends JPanel {
     // Lista completa cargada desde BD
     private List<Apostador> todosLosApostadores;
 
+    private JPanel statsContainer;
+    private JPanel actionRow;
+
     public PanelApostadores(boolean isAdmin) {
         controller = new ApostadorController();
         setLayout(new BorderLayout());
@@ -58,7 +64,7 @@ public class PanelApostadores extends JPanel {
         contentPanel.setOpaque(true);
 
         // ---- 1. TARJETAS DE ESTADÍSTICAS (datos reales, nombres en español) ----
-        JPanel statsContainer = new JPanel(new GridLayout(1, 3, 20, 0));
+        statsContainer = new JPanel(new GridLayout(1, 3, 20, 0));
         statsContainer.setBackground(BG_APP);
         statsContainer.setOpaque(true);
         statsContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
@@ -66,17 +72,17 @@ public class PanelApostadores extends JPanel {
         lblTotalApostadores = new JLabel("0");
         lblTotalApostadores.setFont(new Font("Segoe UI", Font.BOLD, 22));
         lblTotalApostadores.setForeground(TEXT_LIGHT);
-        JPanel card1 = createStatCard("APOSTADORES REGISTRADOS", "👥", lblTotalApostadores, "Total de usuarios en el sistema", TEXT_CYAN);
+        JPanel card1 = createStatCard("APOSTADORES REGISTRADOS", FontAwesomeSolid.USERS, lblTotalApostadores, "Total de usuarios en el sistema", TEXT_CYAN);
 
         lblLiderPuntos = new JLabel("—");
         lblLiderPuntos.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblLiderPuntos.setForeground(TEXT_GOLD);
-        JPanel card2 = createStatCard("LÍDER ACTUAL", "🏅", lblLiderPuntos, "Apostador con más puntos acumulados", TEXT_LIGHT);
+        JPanel card2 = createStatCard("LÍDER ACTUAL", FontAwesomeSolid.MEDAL, lblLiderPuntos, "Apostador con más puntos acumulados", TEXT_LIGHT);
 
         lblTotalPuntos = new JLabel("0");
         lblTotalPuntos.setFont(new Font("Segoe UI", Font.BOLD, 22));
         lblTotalPuntos.setForeground(TEXT_LIGHT);
-        JPanel card3 = createStatCard("PUNTOS EN JUEGO", "⭐", lblTotalPuntos, "Suma total de puntos del sistema", TEXT_GOLD);
+        JPanel card3 = createStatCard("PUNTOS EN JUEGO", FontAwesomeSolid.STAR, lblTotalPuntos, "Suma total de puntos del sistema", TEXT_GOLD);
 
         statsContainer.add(card1);
         statsContainer.add(card2);
@@ -84,18 +90,17 @@ public class PanelApostadores extends JPanel {
         contentPanel.add(statsContainer);
         contentPanel.add(Box.createVerticalStrut(25));
 
-        // ---- 2. BUSCADOR (izquierda) + REGISTRO (derecha) en la misma fila ----
-        int cols = isAdmin ? 1 : 2;
-        JPanel actionRow = new JPanel(new GridLayout(1, cols, 20, 0));
+        // ---- 2. BUSCADOR ----
+        actionRow = new JPanel(new GridLayout(1, 1, 20, 0));
         actionRow.setOpaque(false);
         actionRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 145));
 
-        // -- Panel de búsqueda (izquierda) --
+        // -- Panel de búsqueda --
         JPanel searchCard = createRoundedPanel();
         searchCard.setLayout(new BoxLayout(searchCard, BoxLayout.Y_AXIS));
         searchCard.setBorder(new EmptyBorder(18, 20, 18, 20));
 
-        JLabel lblSearchTitle = new JLabel("🔍  Buscar Apostador");
+        JLabel lblSearchTitle = new JLabel("Buscar Apostador");
         lblSearchTitle.setFont(new Font("Consolas", Font.BOLD, 11));
         lblSearchTitle.setForeground(TEXT_MUTED);
         lblSearchTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -124,70 +129,11 @@ public class PanelApostadores extends JPanel {
         searchCard.add(txtBuscar);
         searchCard.add(Box.createVerticalGlue());
 
-        if (!isAdmin) {
-            // -- Panel de registro (derecha) --
-            JPanel registerCard = createRoundedPanel();
-            registerCard.setLayout(new BoxLayout(registerCard, BoxLayout.Y_AXIS));
-            registerCard.setBorder(new EmptyBorder(18, 20, 18, 20));
-
-            JLabel lblRegTitle = new JLabel("👤  Registrar Nuevo Apostador");
-            lblRegTitle.setFont(new Font("Consolas", Font.BOLD, 11));
-            lblRegTitle.setForeground(TEXT_MUTED);
-            lblRegTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-            JTextField txtNombre = crearTextField("Ingrese el nombre completo...");
-            ((AbstractDocument) txtNombre.getDocument()).setDocumentFilter(new DocumentFilter() {
-                @Override
-                public void insertString(FilterBypass fb, int offset, String text, AttributeSet attr) throws BadLocationException {
-                    if (text != null && text.matches("[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]*")) super.insertString(fb, offset, text, attr);
-                }
-                @Override
-                public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
-                    if (text != null && text.matches("[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]*")) super.replace(fb, offset, length, text, attrs);
-                }
-            });
-            txtNombre.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-            JButton btnRegistrar = createGoldButton("Registrar Apostador");
-            btnRegistrar.setAlignmentX(Component.CENTER_ALIGNMENT);
-            btnRegistrar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-            btnRegistrar.addActionListener(e -> {
-                String nombre = txtNombre.getText().trim();
-                if (controller.registrarApostador(nombre)) {
-                    JOptionPane.showMessageDialog(this, "Apostador \"" + nombre + "\" registrado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
-                    txtNombre.setText("");
-                    cargarDatos();
-                } else {
-                    JOptionPane.showMessageDialog(this, controller.getUltimoError(), "Error", JOptionPane.ERROR_MESSAGE);
-                    txtNombre.requestFocus();
-                }
-            });
-
-            JPanel regTitleWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-            regTitleWrapper.setOpaque(false);
-            regTitleWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
-            regTitleWrapper.add(lblRegTitle);
-
-            JPanel txtNombreWrapper = new JPanel(new BorderLayout());
-            txtNombreWrapper.setOpaque(false);
-            txtNombreWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
-            txtNombreWrapper.add(txtNombre, BorderLayout.CENTER);
-
-            registerCard.add(regTitleWrapper);
-            registerCard.add(Box.createVerticalStrut(10));
-            registerCard.add(txtNombreWrapper);
-            registerCard.add(Box.createVerticalStrut(10));
-            registerCard.add(btnRegistrar);
-            registerCard.add(Box.createVerticalGlue());
-
-            actionRow.add(searchCard);
-            actionRow.add(registerCard);
-        } else {
-            actionRow.add(searchCard);
-        }
+        actionRow.add(searchCard);
 
         contentPanel.add(actionRow);
         contentPanel.add(Box.createVerticalStrut(25));
+
 
         // ---- 4. LISTA DE APOSTADORES ----
         JPanel listCard = createRoundedPanel();
@@ -233,7 +179,32 @@ public class PanelApostadores extends JPanel {
 
         contentPanel.add(listCard);
 
-        add(contentPanel, BorderLayout.CENTER);
+        JScrollPane mainScrollPane = new JScrollPane(contentPanel);
+        mainScrollPane.setBorder(null);
+        mainScrollPane.setOpaque(false);
+        mainScrollPane.getViewport().setOpaque(false);
+        mainScrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        add(mainScrollPane, BorderLayout.CENTER);
+
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                int width = getWidth();
+                if (width < 750) {
+                    statsContainer.setLayout(new GridLayout(3, 1, 0, 15));
+                    statsContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 380));
+                    actionRow.setLayout(new GridLayout(1, 1, 0, 15));
+                    actionRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 145));
+                } else {
+                    statsContainer.setLayout(new GridLayout(1, 3, 20, 0));
+                    statsContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+                    actionRow.setLayout(new GridLayout(1, 1, 20, 0));
+                    actionRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 145));
+                }
+                statsContainer.revalidate();
+                actionRow.revalidate();
+            }
+        });
 
         cargarDatos();
     }
@@ -353,7 +324,7 @@ public class PanelApostadores extends JPanel {
         return p;
     }
 
-    private JPanel createStatCard(String title, String icon, JLabel mainValue, String subText, Color subColor) {
+    private JPanel createStatCard(String title, Ikon icon, JLabel mainValue, String subText, Color subColor) {
         JPanel card = createRoundedPanel();
         card.setLayout(new BorderLayout());
         card.setBorder(new EmptyBorder(20, 20, 15, 20));
@@ -363,8 +334,9 @@ public class PanelApostadores extends JPanel {
         JLabel lblTitle = new JLabel(title);
         lblTitle.setFont(new Font("Consolas", Font.BOLD, 10));
         lblTitle.setForeground(TEXT_MUTED);
-        JLabel lblIcon = new JLabel(icon);
-        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
+        
+        FontIcon fIcon = FontIcon.of(icon, 20, TEXT_LIGHT);
+        JLabel lblIcon = new JLabel(fIcon);
         topP.add(lblTitle, BorderLayout.WEST);
         topP.add(lblIcon, BorderLayout.EAST);
 

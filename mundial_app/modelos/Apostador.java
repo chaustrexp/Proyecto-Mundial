@@ -4,11 +4,20 @@ public class Apostador {
     private int id;
     private String nombre;
     private int puntosTotal;
+    private Integer usuarioId;
+
+    public Apostador(int id, String nombre, int puntosTotal, Integer usuarioId) {
+        this.id = id;
+        this.nombre = nombre;
+        this.puntosTotal = puntosTotal;
+        this.usuarioId = usuarioId;
+    }
 
     public Apostador(int id, String nombre, int puntosTotal) {
         this.id = id;
         this.nombre = nombre;
         this.puntosTotal = puntosTotal;
+        this.usuarioId = null;
     }
 
     public Apostador(String nombre) {
@@ -42,5 +51,13 @@ public class Apostador {
 
     public void sumarPuntos(int puntos) {
         this.puntosTotal += puntos;
+    }
+
+    public Integer getUsuarioId() {
+        return usuarioId;
+    }
+
+    public void setUsuarioId(Integer usuarioId) {
+        this.usuarioId = usuarioId;
     }
 }

@@ -4,6 +4,7 @@ import dao.EquipoDAO;
 import dao.PartidoDAO;
 import modelos.Equipo;
 import modelos.Partido;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -28,9 +29,10 @@ public class PartidoController {
      * @param equipoVisita Equipo visitante seleccionado.
      * @param fase         Fase del torneo.
      * @param partidosExistentes Lista actual de partidos (para detectar duplicados).
+     * @param fechaHora    Hora y fecha del partido.
      * @return true si se creó correctamente, false si falló.
      */
-    public boolean crearPartido(Equipo equipoLocal, Equipo equipoVisita, String fase, List<Partido> partidosExistentes) {
+    public boolean crearPartido(Equipo equipoLocal, Equipo equipoVisita, String fase, List<Partido> partidosExistentes, LocalDateTime fechaHora) {
         ultimoError = null;
 
         // Validación 1: Equipos nulos
@@ -64,7 +66,7 @@ public class PartidoController {
         }
 
         // Lógica de negocio: insertar en BD
-        Partido nuevo = new Partido(0, equipoLocal, equipoVisita, null, fase, 0, 0);
+        Partido nuevo = new Partido(0, equipoLocal, equipoVisita, fechaHora, fase, 0, 0);
         boolean resultado = partidoDAO.insertarPartido(nuevo);
         if (!resultado) {
             ultimoError = "✖ Error al crear el partido en la base de datos.";
@@ -101,5 +103,12 @@ public class PartidoController {
      */
     public boolean actualizarGolesPartido(int partidoId, int golesLocal, int golesVisita) {
         return partidoDAO.actualizarGolesPartido(partidoId, golesLocal, golesVisita);
+    }
+
+    /**
+     * Actualiza la fecha y hora de un partido.
+     */
+    public boolean actualizarHorarioPartido(int partidoId, LocalDateTime fechaHora) {
+        return partidoDAO.actualizarHorarioPartido(partidoId, fechaHora);
     }
 }
