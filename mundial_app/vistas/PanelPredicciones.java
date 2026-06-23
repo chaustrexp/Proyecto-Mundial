@@ -79,16 +79,15 @@ public class PanelPredicciones extends JPanel {
         
         // Obtener fecha/hora real
         java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMMM yyyy HH:mm:ss", new java.util.Locale("es", "ES"));
-        String fechaHoyStr = "📅 " + sdf.format(new java.util.Date());
+        String fechaHoyStr = sdf.format(new java.util.Date());
         
-        JButton btnDate = createFilterButton(fechaHoyStr);
-        // Actualizar la hora en tiempo real cada segundo
+        JButton btnDate = createFilterButton(fechaHoyStr, FontAwesomeSolid.CALENDAR_ALT);
+        btnDate.setPreferredSize(new Dimension(260, 32));
         Timer timer = new Timer(1000, evt -> {
-            btnDate.setText("📅 " + sdf.format(new java.util.Date()));
+            btnDate.setText(sdf.format(new java.util.Date()));
         });
         timer.start();
         
-        leftFilters.add(createFilterButton("🏆 Todos los Grupos"));
         leftFilters.add(btnDate);
         
         JPanel rightBtnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
@@ -99,21 +98,9 @@ public class PanelPredicciones extends JPanel {
             btnMisPred.addActionListener(e -> abrirDialogoMisPredicciones());
             rightBtnPanel.add(btnMisPred);
 
-            JButton btnNewPred = createGoldButton("➕ Nueva Predicción");
+            JButton btnNewPred = createGoldButton("Nueva Predicción", FontAwesomeSolid.PLUS);
             btnNewPred.addActionListener(e -> abrirDialogoRegistro());
             rightBtnPanel.add(btnNewPred);
-        } else {
-            JButton btnRefresh = createDarkButton("🔄 Actualizar Datos");
-            btnRefresh.setPreferredSize(new Dimension(150, 32));
-            btnRefresh.addActionListener(e -> {
-                refreshFeed();
-                refreshProximos();
-                btnRefresh.setText("✔ Actualizado");
-                Timer t = new Timer(1500, evt -> btnRefresh.setText("🔄 Actualizar Datos"));
-                t.setRepeats(false);
-                t.start();
-            });
-            rightBtnPanel.add(btnRefresh);
         }
         
         filtersPanel.add(leftFilters, BorderLayout.WEST);
@@ -455,15 +442,25 @@ public class PanelPredicciones extends JPanel {
 
         String matchStr = pred.getPartido().getEquipoLocal().getNombre()
                 + " vs " + pred.getPartido().getEquipoVisita().getNombre();
-        JLabel lblMatch = new JLabel(nombre + "  →  " + matchStr);
-        lblMatch.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblMatch.setForeground(Color.WHITE);
+        JPanel matchLine = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        matchLine.setOpaque(false);
+        matchLine.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel lblName = new JLabel(nombre);
+        lblName.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblName.setForeground(Color.WHITE);
+        JLabel lblArrow = new JLabel(FontIcon.of(FontAwesomeSolid.ARROW_RIGHT, 10, TEXT_MUTED));
+        JLabel lblTeams = new JLabel(matchStr);
+        lblTeams.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblTeams.setForeground(Color.WHITE);
+        matchLine.add(lblName);
+        matchLine.add(lblArrow);
+        matchLine.add(lblTeams);
 
         JLabel lblSub = new JLabel("predijo: " + pred.getGolesPredEq1() + " - " + pred.getGolesPredEq2());
         lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         lblSub.setForeground(TEXT_MUTED);
 
-        info.add(lblMatch);
+        info.add(matchLine);
         info.add(Box.createVerticalStrut(2));
         info.add(lblSub);
 
@@ -546,6 +543,10 @@ public class PanelPredicciones extends JPanel {
     }
 
     private JButton createDarkButton(String text) {
+        return createDarkButton(text, null);
+    }
+
+    private JButton createDarkButton(String text, Ikon icon) {
         JButton btn = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -555,16 +556,16 @@ public class PanelPredicciones extends JPanel {
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 6, 6));
                 g2.setColor(BORDER_CARD);
                 g2.draw(new RoundRectangle2D.Float(0, 0, getWidth()-1, getHeight()-1, 6, 6));
-                
-                FontMetrics fm = g2.getFontMetrics(getFont());
-                int textX = (getWidth() - fm.stringWidth(getText())) / 2;
-                int textY = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-                g2.setColor(TEXT_LIGHT);
-                g2.drawString(getText(), textX, textY);
                 g2.dispose();
+                super.paintComponent(g);
             }
         };
         btn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btn.setForeground(TEXT_LIGHT);
+        if (icon != null) {
+            btn.setIcon(FontIcon.of(icon, 12, TEXT_LIGHT));
+            btn.setIconTextGap(6);
+        }
         btn.setContentAreaFilled(false);
         btn.setBorderPainted(false);
         btn.setFocusPainted(false);
@@ -574,12 +575,21 @@ public class PanelPredicciones extends JPanel {
     }
 
     private JButton createFilterButton(String text) {
-        JButton btn = createDarkButton(text);
+        return createFilterButton(text, null);
+    }
+
+    private JButton createFilterButton(String text, Ikon icon) {
+        JButton btn = createDarkButton(text, icon);
         btn.setPreferredSize(new Dimension(180, 32));
         return btn;
     }
 
     private JButton createGoldButton(String text) {
+        return createGoldButton(text, null);
+    }
+
+    private JButton createGoldButton(String text, Ikon icon) {
+        Color textColor = new Color(29, 29, 29);
         JButton btn = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -587,16 +597,16 @@ public class PanelPredicciones extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(getModel().isRollover() ? TEXT_GOLD.brighter() : TEXT_GOLD);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 6, 6));
-                
-                FontMetrics fm = g2.getFontMetrics(getFont());
-                int textX = (getWidth() - fm.stringWidth(getText())) / 2;
-                int textY = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-                g2.setColor(new Color(29, 29, 29));
-                g2.drawString(getText(), textX, textY);
                 g2.dispose();
+                super.paintComponent(g);
             }
         };
         btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.setForeground(textColor);
+        if (icon != null) {
+            btn.setIcon(FontIcon.of(icon, 12, textColor));
+            btn.setIconTextGap(6);
+        }
         btn.setContentAreaFilled(false);
         btn.setBorderPainted(false);
         btn.setFocusPainted(false);
@@ -662,7 +672,10 @@ public class PanelPredicciones extends JPanel {
         // Stats Footer
         JPanel footP = new JPanel(new BorderLayout());
         footP.setOpaque(false);
-        JLabel lp = new JLabel("📊 " + predictores); lp.setForeground(TEXT_MUTED); lp.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        JLabel lp = new JLabel(" " + predictores);
+        lp.setIcon(FontIcon.of(FontAwesomeSolid.CHART_BAR, 10, TEXT_MUTED));
+        lp.setForeground(TEXT_MUTED);
+        lp.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         JLabel ld = new JLabel(dinero); ld.setForeground(TEXT_GOLD); ld.setFont(new Font("Segoe UI", Font.BOLD, 10));
         footP.add(lp, BorderLayout.WEST);
         footP.add(ld, BorderLayout.EAST);
@@ -857,7 +870,7 @@ public class PanelPredicciones extends JPanel {
         p.setBorder(new EmptyBorder(15, 15, 15, 15));
         
         if (utils.SesionUsuario.getApostadorActual() == null) {
-            JOptionPane.showMessageDialog(this, "⚠ Su cuenta no tiene un perfil de apostador vinculado o hubo un error.", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Su cuenta no tiene un perfil de apostador vinculado o hubo un error.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
         
@@ -896,11 +909,13 @@ public class PanelPredicciones extends JPanel {
             Partido pSel = (Partido) cbPar.getSelectedItem();
             if (pSel != null) {
                 if (pSel.isLocked()) {
-                    lblLockInfo.setText("🔒 Bloqueado (en curso o terminado)");
+                    lblLockInfo.setIcon(FontIcon.of(FontAwesomeSolid.LOCK, 12, Color.RED));
+                    lblLockInfo.setText(" Bloqueado (en curso o terminado)");
                     lblLockInfo.setForeground(Color.RED);
                     btnGuardar.setEnabled(false);
                 } else {
-                    lblLockInfo.setText("✅ Abierto para apuestas");
+                    lblLockInfo.setIcon(FontIcon.of(FontAwesomeSolid.UNLOCK, 12, new Color(0, 200, 0)));
+                    lblLockInfo.setText(" Abierto para apuestas");
                     lblLockInfo.setForeground(new Color(0, 200, 0));
                     btnGuardar.setEnabled(true);
                 }

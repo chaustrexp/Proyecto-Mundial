@@ -13,14 +13,13 @@ import utils.ValidationUtils;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.*;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class PanelPartidos extends JPanel {
 
@@ -37,6 +36,7 @@ public class PanelPartidos extends JPanel {
     private static final Color FIELD_BORDER    = new Color(27, 38, 59);     // #1B263B
 
     private PartidoController controller;
+    private boolean isAdmin;
     private JPanel listContainer;
     private JTextField txtSearch;
     private JComboBox<String> cbStateFilter;
@@ -47,19 +47,11 @@ public class PanelPartidos extends JPanel {
     private JLabel lblTotalLive;
     private JLabel lblTotalUpcoming;
 
-    // Control de estado en vivo en memoria
-    private static final Set<Integer> partidosEnVivo = new HashSet<>();
-    // Mapeo en memoria de minutos para partidos en vivo
-    private static final Map<Integer, Integer> minutosPartidos = new HashMap<>();
-    // Mapeo en memoria de goles en vivo temporales antes de finalizar
-    private static final Map<Integer, Integer> golesLocalVivo = new HashMap<>();
-    private static final Map<Integer, Integer> golesVisitaVivo = new HashMap<>();
-    
-    // Mapeo de horarios ficticios y estadios por partido
-    private static final Map<Integer, String> horariosPartidos = new HashMap<>();
+    // Mapeo de estadios ficticios por partido (solo visual)
     private static final Map<Integer, String> estadiosPartidos = new HashMap<>();
 
     public PanelPartidos(boolean isAdmin) {
+        this.isAdmin = isAdmin;
         controller = new PartidoController();
         setLayout(new BorderLayout());
         setBackground(BG_APP);
@@ -93,7 +85,7 @@ public class PanelPartidos extends JPanel {
 
         if (isAdmin) {
             // Botón Programar Partido Dorado
-            JButton btnProgramar = createGoldButton("⊕ Programar Nuevo Partido");
+            JButton btnProgramar = createGoldButton("Programar Nuevo Partido", FontAwesomeSolid.PLUS);
             btnProgramar.addActionListener(e -> abrirDialogoProgramar());
             btnProgramar.setAlignmentX(Component.CENTER_ALIGNMENT);
             headerPanel.add(btnProgramar);
@@ -226,16 +218,11 @@ public class PanelPartidos extends JPanel {
         List<Partido> partidos = controller.obtenerPartidos();
         lblTotalScheduled.setText(String.format("%02d", partidos.size()));
 
-        int enVivoCount = partidosEnVivo.size();
-        lblTotalLive.setText(String.format("%02d", enVivoCount));
+        long enVivoCount = partidos.stream().filter(Partido::isEnVivo).count();
+        lblTotalLive.setText(String.format("%02d", (int) enVivoCount));
 
-        int porIniciarCount = 0;
-        for (Partido p : partidos) {
-            if (p.getGolesLocal() == null && !partidosEnVivo.contains(p.getId())) {
-                porIniciarCount++;
-            }
-        }
-        lblTotalUpcoming.setText(String.format("%02d", porIniciarCount));
+        long porIniciarCount = partidos.stream().filter(Partido::isProgramado).count();
+        lblTotalUpcoming.setText(String.format("%02d", (int) porIniciarCount));
     }
 
     private void filtrarYRenderizar() {
@@ -247,19 +234,17 @@ public class PanelPartidos extends JPanel {
         List<Partido> partidos = controller.obtenerPartidos();
 
         for (Partido p : partidos) {
-            // Determinar estado
-            boolean esFinalizado = p.getGolesLocal() != null;
-            boolean esEnVivo = partidosEnVivo.contains(p.getId());
-            boolean esPorIniciar = !esFinalizado && !esEnVivo;
+            boolean esFinalizado = p.isFinalizado();
+            boolean esEnVivo     = p.isEnVivo();
+            boolean esPorIniciar = p.isProgramado();
 
             // Filtrar por estado
-            if ("En Vivo".equals(estadoFiltro) && !esEnVivo) continue;
+            if ("En Vivo".equals(estadoFiltro)    && !esEnVivo)     continue;
             if ("Por Iniciar".equals(estadoFiltro) && !esPorIniciar) continue;
             if ("Finalizados".equals(estadoFiltro) && !esFinalizado) continue;
 
-            // Asignación de estadio y horario ficticios por defecto si no están definidos
-            if (!horariosPartidos.containsKey(p.getId())) {
-                horariosPartidos.put(p.getId(), "HOY - 21:00");
+            // Estadio ficticio por partido
+            if (!estadiosPartidos.containsKey(p.getId())) {
                 String estadio = "SOFI STADIUM";
                 if (p.getEquipoLocal().getNombre().toUpperCase().contains("MEX")) estadio = "ESTADIO AZTECA";
                 else if (p.getEquipoLocal().getNombre().toUpperCase().contains("USA")) estadio = "METLIFE STADIUM";
@@ -268,16 +253,18 @@ public class PanelPartidos extends JPanel {
             }
 
             String estadio = estadiosPartidos.get(p.getId());
-            String horario = p.getFecha() != null ? p.getFecha().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : horariosPartidos.get(p.getId());
+            String horario = p.getFecha() != null
+                    ? p.getFecha().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                    : "HOY - 21:00";
 
             // Filtro de búsqueda
-            boolean coincideLocal = p.getEquipoLocal().getNombre().toLowerCase().contains(query);
-            boolean coincideVisita = p.getEquipoVisita().getNombre().toLowerCase().contains(query);
+            boolean coincideLocal   = p.getEquipoLocal().getNombre().toLowerCase().contains(query);
+            boolean coincideVisita  = p.getEquipoVisita().getNombre().toLowerCase().contains(query);
             boolean coincideEstadio = estadio.toLowerCase().contains(query);
-            boolean coincideFase = p.getFase().toLowerCase().contains(query);
+            boolean coincideFase    = p.getFase().toLowerCase().contains(query);
 
             if (query.isEmpty() || coincideLocal || coincideVisita || coincideEstadio || coincideFase) {
-                JPanel matchCard = null;
+                JPanel matchCard;
                 if (esEnVivo) {
                     matchCard = createLiveMatchCard(p, estadio);
                 } else if (esPorIniciar) {
@@ -285,10 +272,8 @@ public class PanelPartidos extends JPanel {
                 } else {
                     matchCard = createFinishedMatchCard(p, estadio);
                 }
-                if (matchCard != null) {
-                    matchCard.setAlignmentX(Component.CENTER_ALIGNMENT);
-                    listContainer.add(matchCard);
-                }
+                matchCard.setAlignmentX(Component.CENTER_ALIGNMENT);
+                listContainer.add(matchCard);
                 listContainer.add(Box.createVerticalStrut(15));
             }
         }
@@ -370,6 +355,11 @@ public class PanelPartidos extends JPanel {
     }
 
     private JButton createGoldButton(String text) {
+        return createGoldButton(text, null);
+    }
+
+    private JButton createGoldButton(String text, Ikon icon) {
+        Color textColor = new Color(29, 29, 29);
         JButton btn = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -377,16 +367,16 @@ public class PanelPartidos extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(getModel().isRollover() ? TEXT_GOLD.brighter() : TEXT_GOLD);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
-                
-                FontMetrics fm = g2.getFontMetrics(getFont());
-                int textX = (getWidth() - fm.stringWidth(getText())) / 2;
-                int textY = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-                g2.setColor(new Color(29, 29, 29));
-                g2.drawString(getText(), textX, textY);
                 g2.dispose();
+                super.paintComponent(g);
             }
         };
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setForeground(textColor);
+        if (icon != null) {
+            btn.setIcon(FontIcon.of(icon, 14, textColor));
+            btn.setIconTextGap(8);
+        }
         btn.setContentAreaFilled(false);
         btn.setBorderPainted(false);
         btn.setFocusPainted(false);
@@ -410,7 +400,7 @@ public class PanelPartidos extends JPanel {
         lblLiveInfo.setFont(new Font("Consolas", Font.BOLD, 11));
         lblLiveInfo.setForeground(TEXT_RED);
 
-        int min = minutosPartidos.getOrDefault(partido.getId(), 1);
+        int min = partido.getMinutoActual() > 0 ? partido.getMinutoActual() : 1;
         JLabel lblMin = new JLabel(min + "'");
         lblMin.setFont(new Font("Consolas", Font.BOLD, 12));
         lblMin.setForeground(TEXT_RED);
@@ -433,8 +423,8 @@ public class PanelPartidos extends JPanel {
         pLoc.add(flagLoc); pLoc.add(nameLoc);
 
         // Score Central
-        int gl = golesLocalVivo.getOrDefault(partido.getId(), 0);
-        int gv = golesVisitaVivo.getOrDefault(partido.getId(), 0);
+        int gl = partido.getGolesLocalVivo();
+        int gv = partido.getGolesVisitaVivo();
         JPanel pScore = new JPanel();
         pScore.setLayout(new BoxLayout(pScore, BoxLayout.Y_AXIS));
         pScore.setOpaque(false);
@@ -487,7 +477,7 @@ public class PanelPartidos extends JPanel {
     private JPanel createScheduledMatchCard(Partido partido, String horario, String estadio) {
         JPanel card = createRoundedCardPanel();
         card.setLayout(new BorderLayout());
-        card.setMaximumSize(new Dimension(800, 130));
+        card.setMaximumSize(new Dimension(800, isAdmin ? 130 : 100));
         card.setBorder(new EmptyBorder(12, 20, 12, 20));
 
         // Header
@@ -505,12 +495,12 @@ public class PanelPartidos extends JPanel {
 
         JPanel pLoc = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         pLoc.setOpaque(false);
+        JLabel flagLoc = new JLabel();
+        utils.FlagManager.setFlagIconAsync(flagLoc, partido.getEquipoLocal().getNombre(), 28, 18);
         JLabel nameLoc = new JLabel(partido.getEquipoLocal().getNombre().toUpperCase());
         nameLoc.setFont(new Font("Segoe UI", Font.BOLD, 13));
         nameLoc.setForeground(Color.WHITE);
-        JLabel flagLoc = new JLabel();
-        utils.FlagManager.setFlagIconAsync(flagLoc, partido.getEquipoLocal().getNombre(), 28, 18);
-        pLoc.add(nameLoc); pLoc.add(flagLoc);
+        pLoc.add(flagLoc); pLoc.add(nameLoc);
 
         JPanel pVS = new JPanel(new GridBagLayout());
         pVS.setOpaque(false);
@@ -535,22 +525,25 @@ public class PanelPartidos extends JPanel {
         body.add(pVS);
         body.add(pVis);
 
-        // Botones "Editar Horario" e "Iniciar"
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 5));
-        buttons.setOpaque(false);
+        // Botones "Editar Horario" e "Iniciar" — solo para administrador
+        if (isAdmin) {
+            JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 5));
+            buttons.setOpaque(false);
 
-        JButton btnEdit = createActionBtn("Editar Horario", FontAwesomeSolid.PENCIL_ALT);
-        btnEdit.addActionListener(e -> abrirDialogoHorario(partido));
+            JButton btnEdit = createActionBtn("Editar Horario", FontAwesomeSolid.PENCIL_ALT);
+            btnEdit.addActionListener(e -> abrirDialogoHorario(partido));
 
-        JButton btnStart = createActionBtn("Iniciar", FontAwesomeSolid.PLAY);
-        btnStart.addActionListener(e -> iniciarPartido(partido));
+            JButton btnStart = createActionBtn("Iniciar", FontAwesomeSolid.PLAY);
+            btnStart.addActionListener(e -> iniciarPartido(partido));
 
-        buttons.add(btnEdit);
-        buttons.add(btnStart);
+            buttons.add(btnEdit);
+            buttons.add(btnStart);
+
+            card.add(buttons, BorderLayout.SOUTH);
+        }
 
         card.add(header, BorderLayout.NORTH);
         card.add(body, BorderLayout.CENTER);
-        card.add(buttons, BorderLayout.SOUTH);
 
         return card;
     }
@@ -573,10 +566,12 @@ public class PanelPartidos extends JPanel {
 
         JPanel pLoc = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         pLoc.setOpaque(false);
+        JLabel flagLoc = new JLabel();
+        utils.FlagManager.setFlagIconAsync(flagLoc, partido.getEquipoLocal().getNombre(), 28, 18);
         JLabel nameLoc = new JLabel(partido.getEquipoLocal().getNombre().toUpperCase());
         nameLoc.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         nameLoc.setForeground(TEXT_LIGHT);
-        pLoc.add(nameLoc);
+        pLoc.add(flagLoc); pLoc.add(nameLoc);
 
         JPanel pScore = new JPanel(new GridBagLayout());
         pScore.setOpaque(false);
@@ -590,7 +585,9 @@ public class PanelPartidos extends JPanel {
         JLabel nameVis = new JLabel(partido.getEquipoVisita().getNombre().toUpperCase());
         nameVis.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         nameVis.setForeground(TEXT_LIGHT);
-        pVis.add(nameVis);
+        JLabel flagVis = new JLabel();
+        utils.FlagManager.setFlagIconAsync(flagVis, partido.getEquipoVisita().getNombre(), 28, 18);
+        pVis.add(nameVis); pVis.add(flagVis);
 
         body.add(pLoc);
         body.add(pScore);
@@ -630,14 +627,13 @@ public class PanelPartidos extends JPanel {
     // --- ACCIONES Y MODALES ---
 
     private void iniciarPartido(Partido p) {
-        partidosEnVivo.add(p.getId());
-        minutosPartidos.put(p.getId(), 1);
-        golesLocalVivo.put(p.getId(), 0);
-        golesVisitaVivo.put(p.getId(), 0);
-
-        JOptionPane.showMessageDialog(this, "⚽ ¡El partido ha iniciado! Ahora se encuentra EN VIVO.", "Partido en Juego", JOptionPane.INFORMATION_MESSAGE);
-        actualizarEstadisticasGlobales();
-        filtrarYRenderizar();
+        if (controller.iniciarPartido(p.getId())) {
+            JOptionPane.showMessageDialog(this, "El partido ha iniciado. Ahora se encuentra EN VIVO.", "Partido en Juego", JOptionPane.INFORMATION_MESSAGE);
+            actualizarEstadisticasGlobales();
+            filtrarYRenderizar();
+        } else {
+            JOptionPane.showMessageDialog(this, "Error al iniciar el partido.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void finalizarPartido(Partido p) {
@@ -646,16 +642,11 @@ public class PanelPartidos extends JPanel {
                 "Finalizar Partido", JOptionPane.YES_NO_OPTION);
         if (confirm != JOptionPane.YES_OPTION) return;
 
-        int gl = golesLocalVivo.getOrDefault(p.getId(), 0);
-        int gv = golesVisitaVivo.getOrDefault(p.getId(), 0);
+        int gl = p.getGolesLocalVivo();
+        int gv = p.getGolesVisitaVivo();
 
         if (controller.actualizarGolesPartido(p.getId(), gl, gv)) {
-            partidosEnVivo.remove(p.getId());
-            minutosPartidos.remove(p.getId());
-            golesLocalVivo.remove(p.getId());
-            golesVisitaVivo.remove(p.getId());
-
-            JOptionPane.showMessageDialog(this, "🏆 Partido finalizado. Tabla de posiciones actualizada.", "Finalizado", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Partido finalizado. Tabla de posiciones actualizada.", "Finalizado", JOptionPane.INFORMATION_MESSAGE);
             actualizarEstadisticasGlobales();
             filtrarYRenderizar();
         } else {
@@ -672,15 +663,15 @@ public class PanelPartidos extends JPanel {
         content.setBackground(BG_CARD);
         content.setBorder(new EmptyBorder(15, 15, 15, 15));
 
-        int gl = golesLocalVivo.getOrDefault(p.getId(), 0);
-        int gv = golesVisitaVivo.getOrDefault(p.getId(), 0);
+        int gl = p.getGolesLocalVivo();
+        int gv = p.getGolesVisitaVivo();
 
         JTextField txtL = new JTextField(String.valueOf(gl), 5);
         JTextField txtV = new JTextField(String.valueOf(gv), 5);
         txtL.setBackground(FIELD_BG); txtL.setForeground(Color.WHITE); txtL.setCaretColor(Color.WHITE);
         txtV.setBackground(FIELD_BG); txtV.setForeground(Color.WHITE); txtV.setCaretColor(Color.WHITE);
 
-        JTextField txtMin = new JTextField(String.valueOf(minutosPartidos.getOrDefault(p.getId(), 1)), 5);
+        JTextField txtMin = new JTextField(String.valueOf(p.getMinutoActual() > 0 ? p.getMinutoActual() : 1), 5);
         txtMin.setBackground(FIELD_BG); txtMin.setForeground(Color.WHITE); txtMin.setCaretColor(Color.WHITE);
 
         ((javax.swing.text.AbstractDocument) txtL.getDocument()).setDocumentFilter(ValidationUtils.getNumbersOnlyFilter(2));
@@ -710,9 +701,7 @@ public class PanelPartidos extends JPanel {
                     return;
                 }
 
-                golesLocalVivo.put(p.getId(), nL);
-                golesVisitaVivo.put(p.getId(), nV);
-                minutosPartidos.put(p.getId(), min);
+                controller.actualizarMarcadorVivo(p.getId(), nL, nV, min);
 
                 dialog.dispose();
                 filtrarYRenderizar();
@@ -770,7 +759,6 @@ public class PanelPartidos extends JPanel {
                 return;
             }
 
-            horariosPartidos.put(p.getId(), hor);
             estadiosPartidos.put(p.getId(), est);
             dialog.dispose();
             filtrarYRenderizar();
@@ -900,15 +888,14 @@ public class PanelPartidos extends JPanel {
 
             List<Partido> actuales = controller.obtenerPartidos();
             if (controller.crearPartido(local, visita, fase, actuales, fechaHora)) {
-                // Obtener el partido recién programado para asignarle estadio y horario
+                // Obtener el partido recién programado para asignarle estadio
                 List<Partido> despues = controller.obtenerPartidos();
                 if (!despues.isEmpty()) {
                     Partido nuevo = despues.get(despues.size() - 1);
-                    horariosPartidos.put(nuevo.getId(), hor);
                     estadiosPartidos.put(nuevo.getId(), est);
                 }
 
-                JOptionPane.showMessageDialog(dialog, "✔ Partido programado con éxito.");
+                JOptionPane.showMessageDialog(dialog, "Partido programado con éxito.");
                 actualizarEstadisticasGlobales();
                 filtrarYRenderizar();
                 dialog.dispose();

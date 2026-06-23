@@ -10,6 +10,7 @@ import utils.SesionUsuario;
 import javax.swing.*;
 import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
+import org.kordamp.ikonli.Ikon;
 import org.kordamp.ikonli.swing.FontIcon;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 import javax.swing.text.AbstractDocument;
@@ -112,7 +113,7 @@ public class PanelResultados extends JPanel {
         }
 
         if (isAdmin) {
-            JButton btnRegistrar = createGoldButton("⊕ Registrar Nuevo Resultado");
+            JButton btnRegistrar = createGoldButton("Registrar Nuevo Resultado", FontAwesomeSolid.PLUS);
             btnRegistrar.addActionListener(e -> abrirDialogoRegistro());
             btnRegistrar.setAlignmentX(Component.CENTER_ALIGNMENT);
             headerPanel.add(btnRegistrar);
@@ -237,28 +238,6 @@ public class PanelResultados extends JPanel {
         
         contentPanel.add(listaPanel);
 
-        if (isAdmin) {
-            // 4. BOTÓN "AGREGAR NUEVO" (Punteado)
-            JPanel addCard = createDottedPanel();
-            addCard.setAlignmentX(Component.CENTER_ALIGNMENT);
-            addCard.setMaximumSize(new Dimension(800, 160));
-            
-            // Hacer clickeable todo el panel punteado
-            addCard.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    abrirDialogoRegistro();
-                }
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    addCard.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                }
-            });
-            
-            contentPanel.add(addCard);
-            contentPanel.add(Box.createVerticalStrut(40));
-        }
-
         JScrollPane scrollPane = new JScrollPane(contentPanel);
         scrollPane.setBorder(null);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
@@ -365,6 +344,11 @@ public class PanelResultados extends JPanel {
     }
 
     private JButton createGoldButton(String text) {
+        return createGoldButton(text, null);
+    }
+
+    private JButton createGoldButton(String text, Ikon icon) {
+        Color textColor = new Color(29, 29, 29);
         JButton btn = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -372,16 +356,16 @@ public class PanelResultados extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(getModel().isRollover() ? TEXT_GOLD.brighter() : TEXT_GOLD);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
-                
-                FontMetrics fm = g2.getFontMetrics(getFont());
-                int textX = (getWidth() - fm.stringWidth(getText())) / 2;
-                int textY = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-                g2.setColor(new Color(29, 29, 29));
-                g2.drawString(getText(), textX, textY);
                 g2.dispose();
+                super.paintComponent(g);
             }
         };
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setForeground(textColor);
+        if (icon != null) {
+            btn.setIcon(FontIcon.of(icon, 14, textColor));
+            btn.setIconTextGap(8);
+        }
         btn.setContentAreaFilled(false);
         btn.setBorderPainted(false);
         btn.setFocusPainted(false);
@@ -638,9 +622,7 @@ public class PanelResultados extends JPanel {
         iconCircle.setOpaque(false);
         iconCircle.setMaximumSize(new Dimension(50, 50));
         iconCircle.setLayout(new BorderLayout());
-        JLabel plus = new JLabel("+", SwingConstants.CENTER);
-        plus.setFont(new Font("Segoe UI", Font.PLAIN, 24));
-        plus.setForeground(TEXT_GOLD);
+        JLabel plus = new JLabel(FontIcon.of(FontAwesomeSolid.PLUS, 24, TEXT_GOLD), SwingConstants.CENTER);
         iconCircle.add(plus, BorderLayout.CENTER);
 
         JLabel t1 = new JLabel("Agregar nuevo encuentro finalizado", SwingConstants.CENTER);

@@ -106,6 +106,20 @@ public class PartidoController {
     }
 
     /**
+     * Inicia un partido: persiste estado 'en_vivo' en la BD.
+     */
+    public boolean iniciarPartido(int partidoId) {
+        return partidoDAO.iniciarPartido(partidoId);
+    }
+
+    /**
+     * Actualiza el marcador en vivo y el minuto en la BD sin finalizar.
+     */
+    public boolean actualizarMarcadorVivo(int partidoId, int golesLocal, int golesVisita, int minuto) {
+        return partidoDAO.actualizarMarcadorVivo(partidoId, golesLocal, golesVisita, minuto);
+    }
+
+    /**
      * Actualiza la fecha y hora de un partido.
      */
     public boolean actualizarHorarioPartido(int partidoId, LocalDateTime fechaHora) {

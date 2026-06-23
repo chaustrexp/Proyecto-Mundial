@@ -22,25 +22,37 @@ Cuenta con un control de acceso por roles (Administrador y Usuario), asegurando 
 
 ### 🔒 Sistema de Roles y Seguridad
 - **Login Autenticado:** Diferenciación en tiempo real entre Administradores y Usuarios estándar.
-- **Validaciones Físicas Estrictas:** Controles en la interfaz (`DocumentFilter` vía `ValidationUtils`) que bloquean en tiempo real caracteres inválidos en todos los formularios (no se permiten letras en campos numéricos, grupos fuera del rango A-L, contraseñas cortas, etc.).
+- **Validaciones Físicas Estrictas:** Controles en la interfaz (`DocumentFilter` vía `ValidationUtils`) que bloquean en tiempo real caracteres inválidos en todos los formularios.
 - **Protección SQL:** Uso de `PreparedStatement` y `try-with-resources` para máxima seguridad y eficiencia de memoria.
 - **Registro de cuenta:** Cualquier usuario puede crear su propia cuenta desde la pantalla de login.
 
 ### 👥 Gestión de Apostadores
 - Módulo exclusivo de registro y visualización en tabla viva con ranking de posiciones.
-- Barra de búsqueda interactiva (solo letras) en tiempo real.
+- Barra de búsqueda interactiva en tiempo real.
 - Tarjetas de estadísticas: total de apostadores, líder actual y suma de puntos en juego.
 
-### ⚽ Simulador de Partidos
+### ⚽ Simulador de Partidos en Tiempo Real
 - **Creación Inteligente:** Programe partidos evitando cruces inválidos o conflictos de Fase de Grupos.
-- **Simulación en Vivo:** Interfaz de marcador visual con minuto actual y validación de rango (1-120).
-- **Banderas reales:** Las banderas de cada selección se cargan automáticamente desde [FlagCDN](https://flagcdn.com) de forma asíncrona.
+- **Estado persistente en BD:** El estado de cada partido (`programado` / `en_vivo` / `finalizado`) se guarda directamente en la base de datos. Si la app se cierra y reabre, los partidos en vivo siguen mostrándose correctamente.
+- **Control exclusivo del Admin:** Solo el administrador puede iniciar partidos, editar horarios, registrar goles en vivo y finalizar encuentros. Los usuarios solo visualizan.
+- **Marcador en vivo persistido:** Los goles y el minuto actual se guardan en BD en tiempo real mientras el partido está activo.
+- **Banderas reales:** Las banderas de cada selección se cargan automáticamente desde [FlagCDN](https://flagcdn.com) de forma asíncrona en todos los cards (programados, en vivo y finalizados).
 
-### 🔮 Predicciones y 🏆 Resultados
-- **Automatización de Puntos:** Cuando el Administrador carga el marcador final oficial, el sistema automáticamente:
-  - **Otorga 5 puntos:** Si el apostador acertó el marcador exacto.
-  - **Otorga 3 puntos:** Si el apostador acertó al equipo ganador o el empate.
-- Restricción de permisos: el administrador audita resultados, pero solo el usuario registra predicciones.
+### 🏟️ Gestión de Equipos
+- Visualización de estadísticas por equipo: partidos jugados, goles y puntos.
+- Las estadísticas se calculan automáticamente desde los partidos finalizados — no requieren ingreso manual.
+
+### 🔮 Predicciones
+- Solo los usuarios registrados pueden crear predicciones.
+- El administrador tiene vista de auditoría sin opción de registrar predicciones propias.
+
+### 🏆 Resultados
+- Visualización de todos los partidos finalizados con marcador oficial.
+- Cada usuario ve su predicción y si acertó junto al resultado real.
+- **Automatización de Puntos:** Cuando el administrador finaliza un partido, el sistema evalúa automáticamente:
+  - **5 puntos:** Marcador exacto acertado.
+  - **3 puntos:** Ganador o empate acertado.
+- El administrador puede corregir un resultado finalizado si fue ingresado con error.
 
 ---
 
@@ -52,7 +64,7 @@ Cuenta con un control de acceso por roles (Administrador y Usuario), asegurando 
 | **Java Swing / AWT** | Interfaz Gráfica (GUI) estilizada con modo oscuro y diseño premium. |
 | **MySQL (XAMPP)** | Persistencia de datos relacionales. |
 | **JDBC** | Driver nativo de comunicación a base de datos. |
-| **Ikonli + FontAwesome 5** | Librería de íconos vectoriales multiplataforma para Swing. Reemplaza el uso de emojis de texto que no son compatibles en Windows. |
+| **Ikonli + FontAwesome 5** | Librería de íconos vectoriales multiplataforma para Swing. |
 | **FlagCDN** | API de banderas de países cargadas dinámicamente como imágenes de alta calidad. |
 
 ---
@@ -84,7 +96,20 @@ Cuenta con un control de acceso por roles (Administrador y Usuario), asegurando 
 2. **Configurar la Base de Datos:**
    - Inicia tu servidor local (XAMPP con MySQL).
    - Abre phpMyAdmin y crea una base de datos llamada `mundial`.
-   - Importa el script SQL ubicado en `base de datos/mundial.sql`.
+   - Importa el script SQL base: `base de datos/mundial.sql`.
+   - Luego ejecuta la migración para el sistema en tiempo real:
+     ```sql
+     ALTER TABLE partidos
+     ADD COLUMN estado VARCHAR(20) NOT NULL DEFAULT 'programado' AFTER fase;
+
+     ALTER TABLE partidos
+     ADD COLUMN goles_local_vivo INT DEFAULT 0 AFTER estado,
+     ADD COLUMN goles_visita_vivo INT DEFAULT 0 AFTER goles_local_vivo,
+     ADD COLUMN minuto_actual INT DEFAULT 0 AFTER goles_visita_vivo;
+
+     UPDATE partidos SET estado = 'finalizado' WHERE goles_local IS NOT NULL;
+     ```
+   > También disponible en `base de datos/migration_v3.sql`.
 
 3. **Dependencias (carpeta `/lib`):**
    El proyecto ya incluye todas las librerías necesarias en la carpeta `lib/`:
@@ -109,6 +134,20 @@ Cuenta con un control de acceso por roles (Administrador y Usuario), asegurando 
 | Partidos | Goles | Solo números, máx. 2 dígitos |
 | Partidos | Minuto | Solo números, rango válido: 1–120 |
 | Resultados / Predicciones | Goles | Solo números, máx. 2 dígitos |
+
+---
+
+## 📋 Permisos por Rol
+
+| Acción | Administrador | Usuario |
+|---|---|---|
+| Iniciar / Finalizar partido | ✅ | ❌ |
+| Editar horario de partido | ✅ | ❌ |
+| Programar nuevo partido | ✅ | ❌ |
+| Registrar goles en vivo | ✅ | ❌ |
+| Ver partidos y resultados | ✅ | ✅ |
+| Registrar predicciones | ❌ | ✅ |
+| Ver sus propias predicciones | ❌ | ✅ |
 
 ---
 

@@ -387,7 +387,7 @@ public class PanelEquipos extends JPanel {
         card.setOpaque(false);
         card.setLayout(new BorderLayout());
         card.setBorder(new EmptyBorder(15, 20, 15, 20));
-        card.setMaximumSize(new Dimension(800, 150));
+        card.setMaximumSize(new Dimension(800, 120));
 
         // PARTE SUPERIOR (Bandera, Nombres, Badge de Sembrado)
         JPanel topSide = new JPanel(new BorderLayout());
@@ -453,37 +453,8 @@ public class PanelEquipos extends JPanel {
         card.add(statsContainer, BorderLayout.CENTER);
 
         if (isAdmin) {
-            // PARTE INFERIOR (Botón Editar Stats / Datos)
-            JButton btnEdit = new JButton(" Editar Stats / Datos") {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setColor(getModel().isRollover() ? TEXT_GOLD.brighter() : TEXT_GOLD);
-                    g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
-                    
-                    FontMetrics fm = g2.getFontMetrics(getFont());
-                    int textX = (getWidth() - fm.stringWidth(getText())) / 2;
-                    int textY = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-                    g2.setColor(new Color(29, 29, 29));
-                    g2.drawString(getText(), textX, textY);
-                    g2.dispose();
-                }
-            };
-            btnEdit.setFont(new Font("Segoe UI", Font.BOLD, 12));
-            btnEdit.setIcon(FontIcon.of(FontAwesomeSolid.PENCIL_ALT, 12, new Color(29, 29, 29)));
-            btnEdit.setContentAreaFilled(false);
-            btnEdit.setBorderPainted(false);
-            btnEdit.setFocusPainted(false);
-            btnEdit.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            btnEdit.setPreferredSize(new Dimension(180, 30));
-            btnEdit.addActionListener(e -> abrirDialogoEquipo(equipo));
-
-            JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 5));
-            bottomPanel.setOpaque(false);
-            bottomPanel.add(btnEdit);
-
-            card.add(bottomPanel, BorderLayout.SOUTH);
+            // Botón para editar datos básicos del equipo (nombre, federación)
+            // Las estadísticas (PJ, Goles, Pts) se calculan automáticamente desde los partidos finalizados
         }
 
         return card;
@@ -531,14 +502,35 @@ public class PanelEquipos extends JPanel {
             }
         };
         p.setOpaque(false);
-        p.setLayout(new GridBagLayout());
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        JLabel plus = new JLabel("⊕ AÑADIR NUEVO EQUIPO", SwingConstants.CENTER);
-        plus.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        plus.setForeground(TEXT_GOLD);
+        JPanel iconCircle = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(BG_CARD);
+                g2.fillOval(0, 0, getWidth(), getHeight());
+                g2.dispose();
+            }
+        };
+        iconCircle.setOpaque(false);
+        iconCircle.setMaximumSize(new Dimension(50, 50));
+        iconCircle.setAlignmentX(Component.CENTER_ALIGNMENT);
+        iconCircle.setLayout(new BorderLayout());
+        iconCircle.add(new JLabel(FontIcon.of(FontAwesomeSolid.PLUS, 24, TEXT_GOLD), SwingConstants.CENTER), BorderLayout.CENTER);
 
-        p.add(plus);
+        JLabel lblText = new JLabel("AÑADIR NUEVO EQUIPO", SwingConstants.CENTER);
+        lblText.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblText.setForeground(TEXT_GOLD);
+        lblText.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        p.add(Box.createVerticalGlue());
+        p.add(iconCircle);
+        p.add(Box.createVerticalStrut(10));
+        p.add(lblText);
+        p.add(Box.createVerticalGlue());
 
         p.addMouseListener(new MouseAdapter() {
             @Override

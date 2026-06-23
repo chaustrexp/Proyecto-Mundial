@@ -16,9 +16,6 @@ import utils.ValidationUtils;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
 
 public class VentanaLogin extends JFrame {
 
@@ -389,13 +386,12 @@ public class VentanaLogin extends JFrame {
     }
 
     private JButton createLoginButton() {
-        JButton btn = new JButton("Iniciar Sesión  →") {
+        JButton btn = new JButton("Iniciar Sesión") {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-                // Gradient background
                 GradientPaint gp;
                 if (getModel().isRollover()) {
                     gp = new GradientPaint(0, 0, BUTTON_GRAD1.brighter(), getWidth(), 0, BUTTON_GRAD2.brighter());
@@ -404,20 +400,15 @@ public class VentanaLogin extends JFrame {
                 }
                 g2.setPaint(gp);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 10, 10));
-
-                // Overlay text
-                FontMetrics fm = g2.getFontMetrics(getFont());
-                Rectangle stringBounds = fm.getStringBounds(getText(), g2).getBounds();
-                int textX = (getWidth() - stringBounds.width) / 2;
-                int textY = (getHeight() - stringBounds.height) / 2 + fm.getAscent();
-
-                g2.setColor(BTN_TEXT_DARK);
-                g2.drawString(getText(), textX, textY);
-
                 g2.dispose();
+                super.paintComponent(g);
             }
         };
         btn.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        btn.setForeground(BTN_TEXT_DARK);
+        btn.setIcon(FontIcon.of(FontAwesomeSolid.ARROW_RIGHT, 16, BTN_TEXT_DARK));
+        btn.setHorizontalTextPosition(SwingConstants.LEFT);
+        btn.setIconTextGap(10);
         btn.setOpaque(false);
         btn.setContentAreaFilled(false);
         btn.setBorderPainted(false);
@@ -489,23 +480,19 @@ public class VentanaLogin extends JFrame {
                 modelos.Partido partidoMostrar = null;
                 boolean isLive = false;
 
-                // 1. Buscar si hay algún partido en vivo (asumimos duración de 110 mins aprox)
+                // 1. Buscar si hay algún partido con estado 'en_vivo' en la BD
                 for (modelos.Partido p : partidos) {
-                    if (p.getFecha() != null) {
-                        java.time.LocalDateTime inicio = p.getFecha();
-                        java.time.LocalDateTime fin = inicio.plusMinutes(110);
-                        if (!now.isBefore(inicio) && now.isBefore(fin)) {
-                            partidoMostrar = p;
-                            isLive = true;
-                            break;
-                        }
+                    if (p.isEnVivo()) {
+                        partidoMostrar = p;
+                        isLive = true;
+                        break;
                     }
                 }
 
-                // 2. Si no hay en vivo, buscar el próximo más cercano
+                // 2. Si no hay en vivo, buscar el próximo más cercano (programado)
                 if (partidoMostrar == null) {
                     partidoMostrar = partidos.stream()
-                        .filter(p -> p.getFecha() != null && p.getFecha().isAfter(now))
+                        .filter(p -> p.isProgramado() && p.getFecha() != null && p.getFecha().isAfter(now))
                         .min(java.util.Comparator.comparing(modelos.Partido::getFecha))
                         .orElse(null);
                 }
